@@ -52,6 +52,7 @@ export function buildIndicadoresManutencao(chamadosManutencao) {
   return {
     total: chamadosManutencao.length,
     porTipo: contarPor(chamadosManutencao, (chamado) => chamado.tipo),
+    geral: detalheDoGrupo(chamadosManutencao),
     porTipoDetalhe,
   };
 }
@@ -67,9 +68,12 @@ export function buildIndicadoresEngenharia(chamadosEngenharia) {
     porAtividadeDetalhe[tipo] = resto;
   }
 
+  const { porEquipamento, ...geral } = detalheDoGrupo(chamadosEngenharia);
+
   return {
     total: chamadosEngenharia.length,
     porTipoAtividade: contarPor(chamadosEngenharia, (chamado) => chamado.tipoAtividade),
+    geral,
     porAtividadeDetalhe,
   };
 }

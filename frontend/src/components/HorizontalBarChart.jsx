@@ -4,10 +4,10 @@ function foldTop(data, limit) {
   if (data.length <= limit) return data;
   const top = data.slice(0, limit);
   const outros = data.slice(limit).reduce((sum, d) => sum + d.total, 0);
-  return [...top, { label: "Outros", total: outros }];
+  return [...top, { label: "Outros (agregado)", total: outros, agregado: true }];
 }
 
-export function HorizontalBarChart({ data, color = "var(--series-1)", limit = 8, height = 260 }) {
+export function HorizontalBarChart({ data, color = "var(--series-1)", limit = 8, height = 260, onBarClick }) {
   const chartData = foldTop(data, limit).slice().reverse();
 
   return (
@@ -28,7 +28,16 @@ export function HorizontalBarChart({ data, color = "var(--series-1)", limit = 8,
           contentStyle={{ background: "var(--surface-1)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
           labelStyle={{ color: "var(--text-primary)" }}
         />
-        <Bar dataKey="total" fill={color} radius={[0, 4, 4, 0]} maxBarSize={22} />
+        <Bar
+          dataKey="total"
+          fill={color}
+          radius={[0, 4, 4, 0]}
+          maxBarSize={22}
+          cursor={onBarClick ? "pointer" : "default"}
+          onClick={(entry) => {
+            if (onBarClick && !entry.agregado) onBarClick(entry.label);
+          }}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

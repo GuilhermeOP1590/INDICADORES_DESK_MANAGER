@@ -4,6 +4,8 @@ import { StatTile } from "../components/StatTile.jsx";
 import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
 import { HorizontalBarChart } from "../components/HorizontalBarChart.jsx";
 import { OperadoresTable } from "../components/OperadoresTable.jsx";
+import { DateFilterBar } from "../components/DateFilterBar.jsx";
+import { periodoMesFiscal } from "../lib/datas.js";
 
 function formatHoras(horas) {
   if (horas === null || horas === undefined) return "—";
@@ -12,25 +14,21 @@ function formatHoras(horas) {
   return `${(horas / 24).toFixed(1)} dias`;
 }
 
-function formatPct(pct) {
-  if (pct === null || pct === undefined) return "—";
-  return `${pct.toFixed(1)}%`;
-}
-
-function pctStatusClass(pct) {
-  if (pct === null || pct === undefined) return "";
-  if (pct >= 90) return "status-good";
-  if (pct >= 70) return "status-warning";
-  return "status-critical";
-}
+const GRANULARIDADES = [
+  { key: "dia", label: "Dia" },
+  { key: "semana", label: "Semana" },
+  { key: "mes", label: "Mês" },
+];
 
 export default function Dashboard() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
+  const [periodo, setPeriodo] = useState(periodoMesFiscal());
+  const [granularidade, setGranularidade] = useState("dia");
 
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchIndicadores({ forceRefresh });
+      const payload = await fetchIndicadores({ forceRefresh, ...periodo });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
@@ -39,54 +37,63 @@ export default function Dashboard() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo.dataInicio, periodo.dataFim]);
 
   return (
     <div>
       <div className="page-toolbar">
-        {state.payload && (
-          <div className="meta">
-            Atualizado em {new Date(state.payload.atualizadoEm).toLocaleString("pt-BR")} · {state.payload.registrosCarregados} de{" "}
-            {state.payload.totalNoDesk} chamados carregados
-          </div>
-        )}
+        <DateFilterBar periodo={periodo} onChange={setPeriodo} />
         <button className="refresh-btn" onClick={() => load(true)} disabled={state.status === "loading"}>
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
       </div>
 
+      {state.payload && (
+        <div className="meta" style={{ marginBottom: 16 }}>
+          {state.payload.totalFiltrado} chamados no período (de {state.payload.totalCarregado} carregados no total, cancelados
+          excluídos)
+        </div>
+      )}
+
       {state.status === "error" && <div className="state-banner error">Erro ao carregar indicadores: {state.error}</div>}
 
-      {state.payload && state.payload.registrosCarregados < state.payload.totalNoDesk && (
+      {state.payload && state.payload.totalCarregado < state.payload.totalNoDesk && (
         <div className="state-banner warning">
-          Exibindo os {state.payload.registrosCarregados} chamados mais recentes de um total de {state.payload.totalNoDesk}.
+          Só {state.payload.totalCarregado} de {state.payload.totalNoDesk} chamados foram carregados da API — pode haver dados
+          faltando.
         </div>
       )}
 
       {state.payload && (
         <>
           <section className="stat-grid">
-            <StatTile label="Total de chamados" value={state.payload.indicadores.volume.total} />
+            <StatTile label="Total no período" value={state.payload.indicadores.volume.total} />
             <StatTile label="Em aberto" value={state.payload.indicadores.volume.abertos} />
             <StatTile label="Finalizados" value={state.payload.indicadores.volume.fechados} />
             <StatTile label="Tempo médio de resolução" value={formatHoras(state.payload.indicadores.sla.tempoMedioResolucaoHoras)} />
-            <StatTile
-              label="SLA 1º atendimento cumprido"
-              value={formatPct(state.payload.indicadores.sla.sla1CumpridoPct)}
-              statusClass={pctStatusClass(state.payload.indicadores.sla.sla1CumpridoPct)}
-            />
-            <StatTile
-              label="SLA 2º atendimento cumprido"
-              value={formatPct(state.payload.indicadores.sla.sla2CumpridoPct)}
-              statusClass={pctStatusClass(state.payload.indicadores.sla.sla2CumpridoPct)}
-            />
           </section>
 
           <section className="panel-grid">
             <div className="panel full-width">
-              <h2>Chamados criados por dia</h2>
-              <p className="subtitle">Últimos dias com movimentação, ordenados cronologicamente</p>
-              <VolumeTrendChart data={state.payload.indicadores.volume.porDia} />
+              <div className="panel-header-row">
+                <div>
+                  <h2>Chamados criados</h2>
+                  <p className="subtitle">Volume ao longo do período selecionado</p>
+                </div>
+                <div className="granularidade-toggle">
+                  {GRANULARIDADES.map((g) => (
+                    <button
+                      key={g.key}
+                      className={granularidade === g.key ? "active" : ""}
+                      onClick={() => setGranularidade(g.key)}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <VolumeTrendChart data={state.payload.indicadores.volume.porDia} granularidade={granularidade} />
             </div>
 
             <div className="panel">

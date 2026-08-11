@@ -1,12 +1,16 @@
 import { useEffect, useState } from "react";
 import { fetchManutencao } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
-import { HorizontalBarChart } from "../components/HorizontalBarChart.jsx";
+import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { OperadoresTable } from "../components/OperadoresTable.jsx";
 import { SubTabs } from "../components/SubTabs.jsx";
+import { DateFilterBar } from "../components/DateFilterBar.jsx";
+import { periodoMesFiscal } from "../lib/datas.js";
 
+const GERAL = "__geral__";
 const TIPOS = ["Preventiva", "Corretiva", "Rotina", "Outros/Não classificado"];
 const COR_POR_TIPO = {
+  [GERAL]: "var(--series-1)",
   Preventiva: "var(--series-3)",
   Corretiva: "var(--series-2)",
   Rotina: "var(--series-1)",
@@ -15,12 +19,13 @@ const COR_POR_TIPO = {
 
 export default function Manutencao() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
-  const [tipoAtivo, setTipoAtivo] = useState("Corretiva");
+  const [periodo, setPeriodo] = useState(periodoMesFiscal());
+  const [tipoAtivo, setTipoAtivo] = useState(GERAL);
 
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchManutencao({ forceRefresh });
+      const payload = await fetchManutencao({ forceRefresh, ...periodo });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
@@ -29,15 +34,22 @@ export default function Manutencao() {
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [periodo.dataInicio, periodo.dataFim]);
 
   const contagemPorTipo = Object.fromEntries((state.payload?.porTipo ?? []).map((t) => [t.label, t.total]));
-  const detalhe = state.payload?.porTipoDetalhe?.[tipoAtivo];
+  const detalhe = tipoAtivo === GERAL ? state.payload?.geral : state.payload?.porTipoDetalhe?.[tipoAtivo];
+
+  const filtroBase = {
+    especialidade: "Manutenção",
+    ...(tipoAtivo === GERAL ? {} : { tipo: tipoAtivo }),
+    ...periodo,
+  };
 
   return (
     <div>
       <div className="page-toolbar">
-        <div className="meta">{state.payload && `${state.payload.total} chamados de Manutenção no total`}</div>
+        <DateFilterBar periodo={periodo} onChange={setPeriodo} />
         <button className="refresh-btn" onClick={() => load(true)} disabled={state.status === "loading"}>
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
@@ -47,8 +59,15 @@ export default function Manutencao() {
 
       {state.payload && (
         <>
+          <div className="meta" style={{ marginBottom: 12 }}>
+            {state.payload.total} chamados de Manutenção no período
+          </div>
+
           <SubTabs
-            options={TIPOS.map((tipo) => ({ value: tipo, label: tipo, count: contagemPorTipo[tipo] ?? 0 }))}
+            options={[
+              { value: GERAL, label: "Geral", count: state.payload.total },
+              ...TIPOS.map((tipo) => ({ value: tipo, label: tipo, count: contagemPorTipo[tipo] ?? 0 })),
+            ]}
             active={tipoAtivo}
             onChange={setTipoAtivo}
           />
@@ -60,29 +79,51 @@ export default function Manutencao() {
             </div>
           )}
 
+          {tipoAtivo === GERAL && (
+            <section className="panel-grid">
+              <MaximizableChart
+                title="Por tipo"
+                subtitle="Preventiva x Corretiva x Rotina x Outros, no período — clique numa barra pra ver os chamados"
+                data={state.payload.porTipo}
+                color="var(--series-1)"
+                limit={4}
+                filtroBase={{ especialidade: "Manutenção", ...periodo }}
+                dimensaoFiltro="tipo"
+              />
+            </section>
+          )}
+
           {detalhe && (
             <>
               <section className="stat-grid">
-                <StatTile label={`Chamados (${tipoAtivo})`} value={detalhe.total} />
+                <StatTile label={`Chamados${tipoAtivo === GERAL ? "" : ` (${tipoAtivo})`}`} value={detalhe.total} />
               </section>
 
               <section className="panel-grid">
-                <div className="panel">
-                  <h2>Por equipamento</h2>
-                  <p className="subtitle">Ranking de equipamentos por volume — {tipoAtivo}</p>
-                  <HorizontalBarChart data={detalhe.porEquipamento} color={COR_POR_TIPO[tipoAtivo]} limit={10} />
-                </div>
+                <MaximizableChart
+                  title="Por equipamento"
+                  subtitle={`Ranking de equipamentos${tipoAtivo !== GERAL ? ` — ${tipoAtivo}` : ""} — clique numa barra`}
+                  data={detalhe.porEquipamento}
+                  color={COR_POR_TIPO[tipoAtivo]}
+                  limit={10}
+                  filtroBase={filtroBase}
+                  dimensaoFiltro="equipamento"
+                />
 
-                <div className="panel">
-                  <h2>Por cliente</h2>
-                  <p className="subtitle">Ranking de lojas/unidades — {tipoAtivo}</p>
-                  <HorizontalBarChart data={detalhe.porCliente} color={COR_POR_TIPO[tipoAtivo]} limit={10} />
-                </div>
+                <MaximizableChart
+                  title="Por cliente"
+                  subtitle={`Ranking de lojas/unidades${tipoAtivo !== GERAL ? ` — ${tipoAtivo}` : ""} — clique numa barra`}
+                  data={detalhe.porCliente}
+                  color={COR_POR_TIPO[tipoAtivo]}
+                  limit={10}
+                  filtroBase={filtroBase}
+                  dimensaoFiltro="cliente"
+                />
 
                 <div className="panel full-width">
                   <h2>Por operador</h2>
-                  <p className="subtitle">Todos os operadores que atenderam chamados de {tipoAtivo}</p>
-                  <OperadoresTable data={detalhe.operadores} />
+                  <p className="subtitle">Todos os operadores que atenderam esses chamados no período — clique numa linha</p>
+                  <OperadoresTable data={detalhe.operadores} filtroBase={filtroBase} />
                 </div>
               </section>
             </>
