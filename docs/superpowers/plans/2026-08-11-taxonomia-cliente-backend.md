@@ -41,7 +41,7 @@ Editar o campo `"scripts"` em `backend/package.json` para incluir:
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test src/"
+    "test": "node --test \"src/**/*.test.js\""
   }
 }
 ```
@@ -573,7 +573,10 @@ Expected: `pass 3`, `fail 0`
 
 - [ ] **Step 5: Rodar a suíte completa do backend**
 
-Run: `node --test src/`
+Run: `node --test "src/**/*.test.js"` (equivalente a `npm test`)
+
+> Não usar `node --test src/` (diretório puro, sem glob) — nesta versão do Node ele também tenta carregar `src/index.js` como teste, o que sobe o servidor Express de verdade e falha com `EADDRINUSE`. Descoberto e corrigido durante a Task 1.
+
 Expected: todos os testes de `subcategorias.test.js`, `usuarios.test.js`, `taxonomia.test.js` e `enriquecimento.test.js` passando (18 testes no total), `fail 0`
 
 - [ ] **Step 6: Adicionar rota de verificação em `backend/src/routes/indicadores.js`**
