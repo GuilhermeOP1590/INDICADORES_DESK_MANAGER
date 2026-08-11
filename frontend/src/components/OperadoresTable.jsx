@@ -1,6 +1,4 @@
-export function OperadoresTable({ data, limit = 10 }) {
-  const rows = data.slice(0, limit);
-
+export function OperadoresTable({ data }) {
   return (
     <table>
       <thead>
@@ -12,7 +10,7 @@ export function OperadoresTable({ data, limit = 10 }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((op) => (
+        {data.map((op) => (
           <tr key={op.operador}>
             <td>{op.operador}</td>
             <td className="num">{op.total}</td>

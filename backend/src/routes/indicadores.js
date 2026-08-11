@@ -2,6 +2,7 @@ import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
 import { buildIndicadores } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos } from "../services/enriquecimento.js";
+import { buildIndicadoresManutencao, buildIndicadoresEngenharia } from "../services/indicadoresPorTaxonomia.js";
 
 export const indicadoresRouter = Router();
 
@@ -36,6 +37,32 @@ indicadoresRouter.get("/chamados-enriquecidos", async (req, res) => {
       },
       amostra: chamados.slice(0, 5),
     });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+indicadoresRouter.get("/manutencao", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    const chamadosManutencao = chamados.filter((chamado) => chamado.especialidade === "Manutenção");
+
+    res.json(buildIndicadoresManutencao(chamadosManutencao));
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+indicadoresRouter.get("/engenharia", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    const chamadosEngenharia = chamados.filter((chamado) => chamado.especialidade === "Engenharia");
+
+    res.json(buildIndicadoresEngenharia(chamadosEngenharia));
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
