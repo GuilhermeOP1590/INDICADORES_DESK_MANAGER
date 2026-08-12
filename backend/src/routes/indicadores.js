@@ -20,6 +20,12 @@ import { fetchSubCategorias } from "../services/subcategorias.js";
 
 export const indicadoresRouter = Router();
 
+// Dashboard é só pra Manutenção e Engenharia — outras áreas (TI, Sesmt, etc) não são
+// responsabilidade desse time e não devem contar nos indicadores gerais.
+function apenasManutencaoEEngenharia(chamados) {
+  return chamados.filter((c) => c.area === "Manutenção" || c.area === "Engenharia");
+}
+
 function lerPeriodo(req) {
   const { dataInicio, dataFim } = req.query;
   return { dataInicio: dataInicio || undefined, dataFim: dataFim || undefined };
@@ -96,7 +102,7 @@ indicadoresRouter.get("/indicadores", async (req, res) => {
       ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = anexarArea(comUf, subCategoriaIndex);
+    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
     const comCliente = comArea.map((c) => ({ ...c, cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null }));
     const semCancelados = excluirCancelados(comCliente);
     const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(semCancelados, req.query.q), req.query.uf);
@@ -134,7 +140,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = anexarArea(comUf, subCategoriaIndex);
+    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
     const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(excluirCancelados(comArea), q), req.query.uf);
 
     // Backlog (criadosAntes) fica FORA do período selecionado por definição — não faz
@@ -194,14 +200,16 @@ indicadoresRouter.get("/indicadores/causas", async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "true";
     const periodo = lerPeriodo(req);
-    const [{ data }, codigoClientePorUsuario, ufPorCodigoCliente] = await Promise.all([
+    const [{ data }, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
       fetchChamados({ forceRefresh }),
       fetchCodigoClientePorUsuario({ forceRefresh }),
       fetchUfPorCodigoCliente({ forceRefresh }),
+      fetchSubCategorias({ forceRefresh }),
     ]);
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
+    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
 
-    const noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(comUf), periodo), req.query.q), req.query.uf);
+    const noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(comArea), periodo), req.query.q), req.query.uf);
     res.json(await carregarCausas(noPeriodo));
   } catch (error) {
     console.error(error);
