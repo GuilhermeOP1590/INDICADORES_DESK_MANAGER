@@ -86,3 +86,18 @@ export async function salvarConfiguracaoStatus(config) {
   if (!response.ok) throw new Error(data.erro || "Falha ao salvar configuração");
   return data;
 }
+
+export function fetchConfiguracaoEquipamentos() {
+  return getJson("/api/configuracao/equipamentos", {});
+}
+
+export async function salvarConfiguracaoEquipamentos(config) {
+  const response = await fetch("/api/configuracao/equipamentos", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao salvar configuração de equipamentos");
+  return data;
+}
