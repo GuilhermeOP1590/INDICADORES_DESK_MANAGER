@@ -3,7 +3,7 @@ import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados } from
 import { StatTile } from "../components/StatTile.jsx";
 import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
 import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
-import { HorizontalBarChart } from "../components/HorizontalBarChart.jsx";
+import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { ChamadosPorAreaChart } from "../components/ChamadosPorAreaChart.jsx";
 import { RankedClientePanel } from "../components/RankedClientePanel.jsx";
 import { DonutChart } from "../components/DonutChart.jsx";
@@ -199,11 +199,15 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="panel">
-              <h2>Chamados por status</h2>
-              <p className="subtitle">Distribuição atual por situação</p>
-              <HorizontalBarChart data={state.payload.indicadores.volume.porStatus} color="var(--series-1)" />
-            </div>
+            <MaximizableChart
+              title="Chamados por status"
+              subtitle="Distribuição atual por situação — clique numa barra"
+              data={state.payload.indicadores.volume.porStatus}
+              color="var(--series-1)"
+              filtroBase={filtroBase}
+              dimensaoFiltro="status"
+              fetcher={fetchDashboardChamados}
+            />
 
             <div className="panel">
               <h2>Chamados por área</h2>

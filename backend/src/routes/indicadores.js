@@ -45,6 +45,8 @@ function valorDaDimensao(chamado, dimensao) {
       return chamado.equipamento;
     case "grupoEquipamento":
       return grupoDoEquipamento(chamado.equipamento);
+    case "status":
+      return chamado.NomeStatus;
     case "cliente":
       return chamado.cliente;
     case "operador":
@@ -121,7 +123,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "true";
     const periodo = lerPeriodo(req);
-    const { situacaoVolume, operador, area, cliente, tipo, criadosAntes, q } = req.query;
+    const { situacaoVolume, operador, area, cliente, tipo, status, criadosAntes, q, dimensao, foraDoTopo } = req.query;
 
     const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
       fetchChamados({ forceRefresh }),
@@ -146,6 +148,12 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     if (cliente) filtrados = filtrados.filter((c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) === cliente);
     if (situacaoVolume === "aberto") filtrados = filtrados.filter((c) => !isFinalizado(c));
     if (situacaoVolume === "finalizado") filtrados = filtrados.filter((c) => isFinalizado(c));
+    if (status) filtrados = filtrados.filter((c) => c.NomeStatus === status);
+
+    if (dimensao && foraDoTopo) {
+      const noTopo = new Set(foraDoTopo.split("|"));
+      filtrados = filtrados.filter((c) => !noTopo.has(valorDaDimensao(c, dimensao)));
+    }
 
     const config = lerConfiguracao();
 
