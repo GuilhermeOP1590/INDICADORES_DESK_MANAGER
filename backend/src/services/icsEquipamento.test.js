@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { buildPorIc } from "./icsEquipamento.js";
 
 function chamado(overrides) {
-  return { Chave: 1, CodChamado: "0000-000001", DataCriacao: "2026-08-01", tipo: "Preventiva", ...overrides };
+  return { Chave: 1, CodChamado: "0000-000001", DataCriacao: "2026-08-01", tipo: "Preventiva", cliente: null, ...overrides };
 }
 
 test("buildPorIc agrupa por Ic e conta total corretamente", () => {
@@ -75,6 +75,29 @@ test("buildPorIc retorna recorrenciaDias null com só 1 chamado", () => {
   const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
   const [resultado] = buildPorIc(chamados, historicoMap);
   assert.equal(resultado.recorrenciaDias, null);
+});
+
+test("buildPorIc usa o cliente mais frequente do histórico do Ic", () => {
+  const chamados = [
+    chamado({ Chave: 1, cliente: "Loja A" }),
+    chamado({ Chave: 2, cliente: "Loja A" }),
+    chamado({ Chave: 3, cliente: "Loja B" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }],
+    [2, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }],
+    [3, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }],
+  ]);
+
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.cliente, "Loja A");
+});
+
+test("buildPorIc retorna cliente null quando nenhum chamado tem cliente identificado", () => {
+  const chamados = [chamado({ Chave: 1, cliente: null })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.cliente, null);
 });
 
 test("buildPorIc ordena por total desc", () => {

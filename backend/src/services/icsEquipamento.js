@@ -19,6 +19,7 @@ export function buildPorIc(chamados, historicoMap) {
       causa: historico?.causa ?? null,
       valorAprovacao: historico?.valorAprovacao ?? null,
       horimetro: historico?.horimetro ?? null,
+      cliente: chamado.cliente ?? null,
     };
 
     for (const ic of ics) {
@@ -38,6 +39,7 @@ export function buildPorIc(chamados, historicoMap) {
       return {
         ic,
         total: ordenados.length,
+        cliente: clienteMaisFrequente(ordenados),
         preventiva,
         corretiva,
         custoTotal,
@@ -46,6 +48,19 @@ export function buildPorIc(chamados, historicoMap) {
       };
     })
     .sort((a, b) => b.total - a.total);
+}
+
+// Em geral o Ic pertence a 1 só cliente/loja — usa o mais frequente no histórico pra absorver
+// alguma inconsistência de cadastro (ex: chamado registrado no cliente errado) sem exigir
+// resolução manual.
+function clienteMaisFrequente(lista) {
+  const contagem = new Map();
+  for (const { cliente } of lista) {
+    if (!cliente) continue;
+    contagem.set(cliente, (contagem.get(cliente) ?? 0) + 1);
+  }
+  if (contagem.size === 0) return null;
+  return [...contagem.entries()].sort((a, b) => b[1] - a[1])[0][0];
 }
 
 function calcularRecorrenciaDias(datasOrdenadasIso) {

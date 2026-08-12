@@ -27,6 +27,7 @@ function PerfilIc({ ic, onClose }) {
     <Modal title={ic.ic} onClose={onClose}>
       <section className="stat-grid">
         <StatTile label="Total de chamados" value={ic.total} />
+        <StatTile label="Cliente" value={ic.cliente ?? "Não identificado"} />
         <StatTile label="Custo total" value={formatBRL(ic.custoTotal)} />
         <StatTile
           label="Recorrência média"
@@ -168,6 +169,9 @@ export default function EquipamentosPorIc() {
                   data={state.payload.ics.map((ic) => ({ ...ic, label: ic.ic }))}
                   nomeColuna="Equipamento (Ic)"
                   onSelecionar={selecionarIc}
+                  colunasExtras={[
+                    { header: "Cliente", render: (d) => d.cliente ?? "—", valorBusca: (d) => d.cliente ?? "" },
+                  ]}
                 />
               </div>
             </>
