@@ -10,6 +10,7 @@ import { DonutChart } from "../components/DonutChart.jsx";
 import { CausaPanel } from "../components/CausaPanel.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
 import { UfSelect } from "../components/UfSelect.jsx";
+import { SubTabs } from "../components/SubTabs.jsx";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
 import { periodoMesFiscal, formatHoras, periodoDoPontoDaSerie } from "../lib/datas.js";
 import { Modal } from "../components/Modal.jsx";
@@ -24,13 +25,18 @@ const GRANULARIDADES = [
   { key: "mes", label: "Mês" },
 ];
 
+const GERAL = "__geral__";
+// "tipo" só existe pra chamados de Manutenção, com Engenharia sempre caindo em "Corretiva"
+// (ver indicadores.js#buildIndicadores no backend) — mesmas abas que já existem em Manutenção.
+const TIPOS = ["Preventiva", "Corretiva", "Rotina", "Segurança", "Outros/Não classificado"];
+
 export default function Dashboard() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [granularidade, setGranularidade] = useState("dia");
   const [busca, setBusca] = useState("");
   const [uf, setUf] = useState("");
-  const [tipoCliente, setTipoCliente] = useState("");
+  const [tipoAtivo, setTipoAtivo] = useState(GERAL);
   const ufsDisponiveis = useUfsDisponiveis();
   const drill = useDrillDown();
 
@@ -49,18 +55,22 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo.dataInicio, periodo.dataFim, busca, uf]);
 
-  const filtroBase = { ...periodo, q: busca || undefined, uf: uf || undefined };
-  const tempoMedio = state.payload?.indicadores.sla.tempoMedioResolucaoHoras;
+  const contagemPorTipo = Object.fromEntries((state.payload?.indicadores.porTipo ?? []).map((t) => [t.label, t.total]));
+  const detalhe = tipoAtivo === GERAL ? state.payload?.indicadores : state.payload?.indicadores.porTipoDetalhe?.[tipoAtivo];
+
+  const filtroBase = {
+    ...(tipoAtivo === GERAL ? {} : { tipo: tipoAtivo }),
+    ...periodo,
+    q: busca || undefined,
+    uf: uf || undefined,
+  };
+  const tempoMedio = detalhe?.sla.tempoMedioResolucaoHoras;
 
   // % de resolução por cliente (só quem tem amostra mínima — senão 1 chamado fechado vira
   // "100%" e distorce o ranking) — quem está indo melhor/pior, não só quem tem mais volume.
   // percentualResolucao null = cliente sem nenhum chamado concluído ou aberto (só "Aguardando
   // Aprovação") — não dá pra ranquear como melhor nem pior sem nenhum dado avaliável.
-  // Filtro de tipo (Preventiva/Corretiva/Rotina/Segurança) troca pra um recorte pré-calculado
-  // no backend (porClientePorTipo) — só existe pra chamados de Manutenção.
-  const porCliente = tipoCliente
-    ? (state.payload?.indicadores.porClientePorTipo?.[tipoCliente] ?? [])
-    : (state.payload?.indicadores.porCliente ?? []);
+  const porCliente = detalhe?.porCliente ?? [];
   const clientesComAmostra = porCliente.filter(
     (c) => c.cliente !== "Não informado" && c.total >= 3 && c.percentualResolucao !== null
   );
@@ -109,20 +119,29 @@ export default function Dashboard() {
 
       {state.payload && (
         <>
+          <SubTabs
+            options={[
+              { value: GERAL, label: "Geral", count: state.payload.indicadores.volume.total },
+              ...TIPOS.map((tipo) => ({ value: tipo, label: tipo, count: contagemPorTipo[tipo] ?? 0 })),
+            ]}
+            active={tipoAtivo}
+            onChange={setTipoAtivo}
+          />
+
           <section className="stat-grid">
             <StatTile
-              label="Total no período"
-              value={state.payload.indicadores.volume.total}
-              onClick={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
+              label={`Total no período${tipoAtivo === GERAL ? "" : ` (${tipoAtivo})`}`}
+              value={detalhe.volume.total}
+              onClick={() => drill.abrirLista(filtroBase, `Total no período${tipoAtivo === GERAL ? "" : ` — ${tipoAtivo}`}`, fetchDashboardChamados)}
             />
             <StatTile
               label="Em aberto"
-              value={state.payload.indicadores.volume.abertos}
+              value={detalhe.volume.abertos}
               onClick={() => drill.abrirLista({ ...filtroBase, situacaoVolume: "aberto" }, "Em aberto", fetchDashboardChamados)}
             />
             <StatTile
               label="Finalizados"
-              value={state.payload.indicadores.volume.fechados}
+              value={detalhe.volume.fechados}
               onClick={() =>
                 drill.abrirLista({ ...filtroBase, situacaoVolume: "finalizado" }, "Finalizados", fetchDashboardChamados)
               }
@@ -154,7 +173,7 @@ export default function Dashboard() {
           </section>
 
           <TeamPerformanceCards
-            operadores={state.payload.indicadores.operadores}
+            operadores={detalhe.operadores}
             onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
             onAbrirOperador={(operador) => drill.abrirLista({ ...filtroBase, operador }, operador, fetchDashboardChamados)}
           />
@@ -189,7 +208,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <VolumeTrendChart
-                data={state.payload.indicadores.volume.porDia}
+                data={detalhe.volume.porDia}
                 granularidade={granularidade}
                 onSelecionarPeriodo={(label) => {
                   const { dataInicio, dataFim, titulo } = periodoDoPontoDaSerie(label, granularidade);
@@ -203,8 +222,8 @@ export default function Dashboard() {
               <p className="subtitle">Proporção dos chamados do período</p>
               <DonutChart
                 data={[
-                  { label: "Em aberto", total: state.payload.indicadores.volume.abertos },
-                  { label: "Finalizados", total: state.payload.indicadores.volume.fechados },
+                  { label: "Em aberto", total: detalhe.volume.abertos },
+                  { label: "Finalizados", total: detalhe.volume.fechados },
                 ]}
                 height={220}
               />
@@ -213,7 +232,7 @@ export default function Dashboard() {
             <MaximizableChart
               title="Chamados por status"
               subtitle="Distribuição atual por situação — clique numa barra"
-              data={state.payload.indicadores.volume.porStatus}
+              data={detalhe.volume.porStatus}
               color="var(--series-1)"
               filtroBase={filtroBase}
               dimensaoFiltro="status"
@@ -222,47 +241,37 @@ export default function Dashboard() {
 
             <div className="panel">
               <h2>Chamados por área</h2>
-              <p className="subtitle">Engenharia x Manutenção x outras áreas — clique numa barra</p>
+              <p className="subtitle">Engenharia x Manutenção — clique numa barra</p>
               <ChamadosPorAreaChart
-                data={state.payload.indicadores.areas}
+                data={detalhe.areas}
                 onBarClick={(area) => drill.abrirLista({ ...filtroBase, area }, area, fetchDashboardChamados)}
               />
             </div>
 
-            <CausaPanel carregar={() => fetchIndicadoresCausas(filtroBase)} filtroBase={filtroBase} />
+            {tipoAtivo === GERAL && (
+              <CausaPanel carregar={() => fetchIndicadoresCausas(filtroBase)} filtroBase={filtroBase} />
+            )}
 
             <RankedClientePanel
               title="Clientes com melhor % de resolução"
-              subtitle={
-                tipoCliente
-                  ? `Top 10 — só ${tipoCliente} (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`
-                  : "Top 10 no período (mínimo 3 chamados) — clique pra ver todos em % e abrir os chamados"
-              }
+              subtitle={`Top 10${tipoAtivo !== GERAL ? ` — ${tipoAtivo}` : ""} no período (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`}
               data={melhorResolucaoClienteData}
               color="var(--status-good)"
-              filtroBase={{ ...filtroBase, tipo: tipoCliente || undefined }}
+              filtroBase={filtroBase}
               formatValue={formatPct}
               ordemInicial="desc"
               fetcher={fetchDashboardChamados}
-              tipoFiltro={tipoCliente}
-              onTipoFiltroChange={setTipoCliente}
             />
 
             <RankedClientePanel
               title="Clientes com pior % de resolução"
-              subtitle={
-                tipoCliente
-                  ? `Top 10 — só ${tipoCliente} (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`
-                  : "Top 10 no período (mínimo 3 chamados) — clique pra ver todos em % e abrir os chamados"
-              }
+              subtitle={`Top 10${tipoAtivo !== GERAL ? ` — ${tipoAtivo}` : ""} no período (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`}
               data={piorResolucaoClienteData}
               color="var(--status-critical)"
-              filtroBase={{ ...filtroBase, tipo: tipoCliente || undefined }}
+              filtroBase={filtroBase}
               formatValue={formatPct}
               ordemInicial="asc"
               fetcher={fetchDashboardChamados}
-              tipoFiltro={tipoCliente}
-              onTipoFiltroChange={setTipoCliente}
             />
           </section>
         </>

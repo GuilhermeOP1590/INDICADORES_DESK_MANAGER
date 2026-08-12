@@ -220,20 +220,7 @@ export function buildBacklog(chamados, periodo) {
   };
 }
 
-// "tipo" só existe pra chamados de Manutenção (ver enriquecimento.js#anexarArea) — Engenharia
-// e "Outras áreas" ficam de fora dos baldes abaixo, então os cards que usam isso pra filtrar
-// (ex: performance por cliente) representam só a fatia de Manutenção quando um tipo é escolhido.
-const TIPOS_FILTRAVEIS = ["Preventiva", "Corretiva", "Rotina", "Segurança"];
-
-function buildPorClientePorTipo(chamados) {
-  const porTipo = {};
-  for (const tipo of TIPOS_FILTRAVEIS) {
-    porTipo[tipo] = buildPorCliente(chamados.filter((c) => c.tipo === tipo));
-  }
-  return porTipo;
-}
-
-export function buildIndicadores(chamados) {
+function buildIndicadoresCore(chamados) {
   return {
     volume: buildVolume(chamados),
     sla: buildSla(chamados),
@@ -241,7 +228,29 @@ export function buildIndicadores(chamados) {
     categorias: buildCategorias(chamados),
     porUf: buildPorUf(chamados),
     porCliente: buildPorCliente(chamados),
-    porClientePorTipo: buildPorClientePorTipo(chamados),
     areas: buildAreas(chamados),
+  };
+}
+
+// "tipo" só existe pra chamados de Manutenção, com uma exceção: Engenharia sempre cai em
+// "Corretiva" (ver taxonomia.js) — as abas abaixo então misturam Engenharia dentro de
+// "Corretiva", e "Outras áreas" nunca aparece em nenhuma (tipo fica null lá). Mesmo racional
+// já usado no filtro de tipo do painel de clientes, só que agora pra tela inteira — igual ao
+// que a página de Manutenção já faz com o próprio porTipoDetalhe.
+const TIPOS_MANUTENCAO = ["Preventiva", "Corretiva", "Rotina", "Segurança", "Outros/Não classificado"];
+
+export function buildIndicadores(chamados) {
+  const porTipoDetalhe = {};
+  for (const tipo of TIPOS_MANUTENCAO) {
+    porTipoDetalhe[tipo] = buildIndicadoresCore(chamados.filter((c) => c.tipo === tipo));
+  }
+
+  return {
+    ...buildIndicadoresCore(chamados),
+    porTipo: groupCount(
+      chamados.filter((c) => c.tipo),
+      (c) => c.tipo
+    ),
+    porTipoDetalhe,
   };
 }
