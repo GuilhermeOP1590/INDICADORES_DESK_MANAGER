@@ -80,6 +80,17 @@ body {
   margin: 0;
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.app-logo {
+  height: 36px;
+  width: auto;
+}
+
 .top-nav {
   display: flex;
   gap: 4px;

@@ -5,12 +5,16 @@ import Engenharia from "./pages/Engenharia.jsx";
 import Orcamento from "./pages/Orcamento.jsx";
 import Performance from "./pages/Performance.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
+import logoEconomart from "./assets/economart-logo.png";
 
 export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>Indicadores Manutenção - Melhoria Contínua</h1>
+        <div className="app-brand">
+          <img src={logoEconomart} alt="Economart" className="app-logo" />
+          <h1>Indicadores Manutenção - Melhoria Contínua</h1>
+        </div>
         <nav className="top-nav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? "active" : "")}>
             Dashboard
