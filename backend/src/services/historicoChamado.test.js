@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extrairIcs, extrairHorimetro } from "./historicoChamado.js";
+import { extrairIcs, extrairHorimetro, extrairTempoAguardandoPecaDias } from "./historicoChamado.js";
 
 test("extrairIcs retorna o Ic de uma única interação", () => {
   const interacoes = [{ ICs: "300 - MTZ - Empilhadeira 06" }];
@@ -39,4 +39,52 @@ test("extrairHorimetro pula interações sem _9293 até achar uma preenchida", (
 test("extrairHorimetro retorna null quando nenhuma interação tem _9293", () => {
   const interacoes = [{ Status: [{ text: "Resolvido" }] }];
   assert.equal(extrairHorimetro(interacoes), null);
+});
+
+test("extrairTempoAguardandoPecaDias soma um período fechado (entrou e saiu)", () => {
+  const interacoes = [
+    { Status: [{ text: "Em Andamento" }], DataAcao: "05-08-2026" },
+    { Status: [{ text: "Aguardando Peça do Estoque" }], DataAcao: "01-08-2026" },
+  ];
+  assert.equal(extrairTempoAguardandoPecaDias(interacoes), 4);
+});
+
+test("extrairTempoAguardandoPecaDias funde Aguardando Peça do Estoque + Peça Enviada para Loja como um único período", () => {
+  const interacoes = [
+    { Status: [{ text: "Resolvido" }], DataAcao: "10-08-2026" },
+    { Status: [{ text: "Peça Enviada para Loja" }], DataAcao: "03-08-2026" },
+    { Status: [{ text: "Aguardando Peça do Estoque" }], DataAcao: "01-08-2026" },
+  ];
+  assert.equal(extrairTempoAguardandoPecaDias(interacoes), 9);
+});
+
+test("extrairTempoAguardandoPecaDias conta até agora quando o período ainda não fechou", () => {
+  const doisDiasAtras = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+  const dataBR = `${String(doisDiasAtras.getDate()).padStart(2, "0")}-${String(doisDiasAtras.getMonth() + 1).padStart(2, "0")}-${doisDiasAtras.getFullYear()}`;
+  const interacoes = [{ Status: [{ text: "Aguardando Peça do Estoque" }], DataAcao: dataBR }];
+  const resultado = extrairTempoAguardandoPecaDias(interacoes);
+  assert.ok(resultado >= 1 && resultado <= 3, `esperado ~2 dias, veio ${resultado}`);
+});
+
+test("extrairTempoAguardandoPecaDias retorna 0 sem nenhuma ocorrência", () => {
+  const interacoes = [{ Status: [{ text: "Resolvido" }], DataAcao: "10-08-2026" }];
+  assert.equal(extrairTempoAguardandoPecaDias(interacoes), 0);
+});
+
+test("extrairTempoAguardandoPecaDias soma dois períodos separados no mesmo histórico", () => {
+  const interacoes = [
+    { Status: [{ text: "Resolvido" }], DataAcao: "20-08-2026" },
+    { Status: [{ text: "Aguardando Peça do Estoque" }], DataAcao: "18-08-2026" },
+    { Status: [{ text: "Em Andamento" }], DataAcao: "10-08-2026" },
+    { Status: [{ text: "Aguardando Peça do Estoque" }], DataAcao: "05-08-2026" },
+  ];
+  assert.equal(extrairTempoAguardandoPecaDias(interacoes), 7);
+});
+
+test("extrairTempoAguardandoPecaDias ignora interações sem DataAcao", () => {
+  const interacoes = [
+    { Status: [{ text: "Aguardando Peça do Estoque" }] },
+    { Status: [{ text: "Resolvido" }], DataAcao: "10-08-2026" },
+  ];
+  assert.equal(extrairTempoAguardandoPecaDias(interacoes), 0);
 });

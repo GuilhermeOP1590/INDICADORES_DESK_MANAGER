@@ -101,6 +101,39 @@ export function extrairHorimetro(interacoes) {
   return comHorimetro ? comHorimetro[CAMPO_EXTRA_HORIMETRO] : null;
 }
 
+const STATUS_AGUARDANDO_PECA = new Set(["Aguardando Peça do Estoque", "Peça Enviada para Loja"]);
+
+// Interações vêm da mais recente pra mais antiga — inverte pra varrer em ordem cronológica.
+// Funde entradas consecutivas nos 2 status de espera de peça como um único período parado
+// (trocar de um status pro outro não fecha o período — a peça só resolve quando instalada).
+// Se o período mais recente ainda não fechou (chamado segue parado nesse status), conta até
+// agora, pra refletir travas em andamento, não só as já resolvidas.
+export function extrairTempoAguardandoPecaDias(interacoes) {
+  const cronologico = [...interacoes].reverse();
+  let diasTotal = 0;
+  let entradaEm = null;
+
+  for (const interacao of cronologico) {
+    if (!interacao.DataAcao) continue;
+    const data = new Date(paraIso(interacao.DataAcao));
+    const status = interacao.Status?.[0]?.text;
+    const aguardandoPeca = STATUS_AGUARDANDO_PECA.has(status);
+
+    if (aguardandoPeca && entradaEm === null) {
+      entradaEm = data;
+    } else if (!aguardandoPeca && entradaEm !== null) {
+      diasTotal += (data.getTime() - entradaEm.getTime()) / (1000 * 60 * 60 * 24);
+      entradaEm = null;
+    }
+  }
+
+  if (entradaEm !== null) {
+    diasTotal += (Date.now() - entradaEm.getTime()) / (1000 * 60 * 60 * 24);
+  }
+
+  return Math.round(diasTotal * 10) / 10;
+}
+
 export async function obterHistoricoChamado({ chave, codChamado }, { forceRefresh = false } = {}) {
   const cacheado = cache.get(chave);
   if (!forceRefresh && cacheado && cacheado.expiresAt > Date.now()) {
@@ -115,6 +148,7 @@ export async function obterHistoricoChamado({ chave, codChamado }, { forceRefres
     dataAprovacao: extrairDataAprovacao(interacoes),
     ics: extrairIcs(interacoes),
     horimetro: extrairHorimetro(interacoes),
+    tempoAguardandoPecaDias: extrairTempoAguardandoPecaDias(interacoes),
   };
 
   cache.set(chave, { historico, expiresAt: Date.now() + TTL_MS });
@@ -145,6 +179,7 @@ export async function obterHistoricoEmLote(chamados, { concorrencia = 60, forceR
       dataAprovacao: null,
       ics: [],
       horimetro: null,
+      tempoAguardandoPecaDias: 0,
     }))
   );
 
