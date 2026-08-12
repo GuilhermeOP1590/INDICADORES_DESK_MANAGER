@@ -6,9 +6,12 @@ import { StatTile } from "./StatTile.jsx";
 // (usado assim em telas que já tem outro jeito de chegar nos chamados).
 export function TeamPerformanceCards({ operadores, onAbrirGeral, onAbrirOperador }) {
   const comOperador = operadores.filter((op) => op.operador !== "Sem operador");
-  const totalChamados = operadores.reduce((soma, op) => soma + op.total, 0);
+  // Base é concluidos+abertos (= "avaliados"), não total — "Aguardando Aprovação" não pode
+  // contar negativamente enquanto o orçamento não é avaliado (mesma regra do backend, ver
+  // percentualResolucao em indicadores.js/indicadoresPorTaxonomia.js).
+  const totalAvaliados = operadores.reduce((soma, op) => soma + (op.concluidos ?? 0) + (op.abertos ?? 0), 0);
   const totalConcluidos = operadores.reduce((soma, op) => soma + (op.concluidos ?? 0), 0);
-  const percentualMedio = totalChamados ? Math.round((totalConcluidos / totalChamados) * 1000) / 10 : 0;
+  const percentualMedio = totalAvaliados ? Math.round((totalConcluidos / totalAvaliados) * 1000) / 10 : 0;
 
   const destaqueVolume = [...comOperador].sort((a, b) => b.total - a.total)[0];
   const destaqueResolucao = [...comOperador]

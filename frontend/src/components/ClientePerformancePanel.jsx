@@ -7,9 +7,12 @@ export function ClientePerformancePanel({ porCliente, onAbrirGeral, onAbrirClien
   const clientes = (porCliente ?? []).filter((c) => c.cliente !== "Não informado");
   if (clientes.length === 0) return null;
 
-  const totalChamados = clientes.reduce((soma, c) => soma + c.total, 0);
+  // Base é concluidos+abertos (= "avaliados"), não total — "Aguardando Aprovação" não pode
+  // contar negativamente enquanto o orçamento não é avaliado (mesma regra do backend, ver
+  // percentualResolucao em indicadores.js/indicadoresPorTaxonomia.js).
+  const totalAvaliados = clientes.reduce((soma, c) => soma + (c.concluidos ?? 0) + (c.abertos ?? 0), 0);
   const totalConcluidos = clientes.reduce((soma, c) => soma + (c.concluidos ?? 0), 0);
-  const percentualMedio = totalChamados ? Math.round((totalConcluidos / totalChamados) * 1000) / 10 : 0;
+  const percentualMedio = totalAvaliados ? Math.round((totalConcluidos / totalAvaliados) * 1000) / 10 : 0;
 
   const destaqueVolume = [...clientes].sort((a, b) => b.total - a.total)[0];
   const comAmostra = clientes.filter((c) => c.total >= 3 && c.percentualResolucao !== null);
