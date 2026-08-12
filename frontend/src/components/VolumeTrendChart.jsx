@@ -1,11 +1,11 @@
 import {
   Area,
-  AreaChart,
   Bar,
-  BarChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   LabelList,
+  Line,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -88,7 +88,7 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90 }) {
   const largura = Math.max(LARGURA_MINIMA, chartData.length * (usaBarras ? LARGURA_POR_PONTO.barras : LARGURA_POR_PONTO.area));
 
   const grafico = usaBarras ? (
-    <BarChart data={chartData} margin={{ left: 0, right: 16, top: 20, bottom: 4 }}>
+    <ComposedChart data={chartData} margin={{ left: 0, right: 16, top: 20, bottom: 4 }}>
       <CartesianGrid vertical={false} stroke="var(--gridline)" />
       <LinhasFimDeSemana chartData={chartData} />
       <XAxis dataKey="periodo" tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={{ stroke: "var(--baseline)" }} tickLine={false} />
@@ -99,9 +99,10 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90 }) {
       <Bar dataKey="abertos" name="Em aberto" stackId="volume" fill="var(--status-warning)" radius={[4, 4, 0, 0]} maxBarSize={64}>
         <LabelList dataKey="abertos" content={(props) => <TotalLabel {...props} chartData={chartData} />} />
       </Bar>
-    </BarChart>
+      <Line type="monotone" dataKey="total" name="Total" stroke="var(--series-1)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+    </ComposedChart>
   ) : (
-    <AreaChart data={chartData} margin={{ left: 0, right: 16, top: 8, bottom: 4 }}>
+    <ComposedChart data={chartData} margin={{ left: 0, right: 16, top: 8, bottom: 4 }}>
       <CartesianGrid vertical={false} stroke="var(--gridline)" />
       <LinhasFimDeSemana chartData={chartData} />
       <XAxis
@@ -117,7 +118,8 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90 }) {
       <Legend wrapperStyle={{ fontSize: 12 }} />
       <Area type="monotone" dataKey="fechados" name="Fechados" stackId="volume" stroke="var(--status-good)" fill="var(--status-good)" fillOpacity={0.35} />
       <Area type="monotone" dataKey="abertos" name="Em aberto" stackId="volume" stroke="var(--status-warning)" fill="var(--status-warning)" fillOpacity={0.35} />
-    </AreaChart>
+      <Line type="monotone" dataKey="total" name="Total" stroke="var(--series-1)" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+    </ComposedChart>
   );
 
   return (
