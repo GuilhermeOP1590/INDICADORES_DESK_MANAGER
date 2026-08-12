@@ -1,6 +1,7 @@
 import { NavLink, Route, Routes } from "react-router-dom";
 import Dashboard from "./pages/Dashboard.jsx";
 import Manutencao from "./pages/Manutencao.jsx";
+import EquipamentosPorIc from "./pages/EquipamentosPorIc.jsx";
 import Engenharia from "./pages/Engenharia.jsx";
 import Orcamento from "./pages/Orcamento.jsx";
 import Performance from "./pages/Performance.jsx";
@@ -23,6 +24,9 @@ export default function App() {
           <NavLink to="/manutencao" className={({ isActive }) => (isActive ? "active" : "")}>
             Manutenção
           </NavLink>
+          <NavLink to="/equipamentos-ic" className={({ isActive }) => (isActive ? "active" : "")}>
+            Equipamentos (Ic)
+          </NavLink>
           <NavLink to="/engenharia" className={({ isActive }) => (isActive ? "active" : "")}>
             Engenharia
           </NavLink>
@@ -44,6 +48,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/manutencao" element={<Manutencao />} />
+        <Route path="/equipamentos-ic" element={<EquipamentosPorIc />} />
         <Route path="/engenharia" element={<Engenharia />} />
         <Route path="/orcamento" element={<Orcamento />} />
         <Route path="/performance" element={<Performance />} />
