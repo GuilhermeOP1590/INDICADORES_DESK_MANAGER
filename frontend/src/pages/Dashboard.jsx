@@ -11,7 +11,7 @@ import { CausaPanel } from "../components/CausaPanel.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
 import { UfSelect } from "../components/UfSelect.jsx";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
-import { periodoMesFiscal, formatHoras } from "../lib/datas.js";
+import { periodoMesFiscal, formatHoras, periodoDoPontoDaSerie } from "../lib/datas.js";
 import { Modal } from "../components/Modal.jsx";
 import { DrillDownContent } from "../components/DrillDownContent.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
@@ -174,7 +174,7 @@ export default function Dashboard() {
               <div className="panel-header-row">
                 <div>
                   <h2>Chamados criados</h2>
-                  <p className="subtitle">Volume ao longo do período selecionado</p>
+                  <p className="subtitle">Volume ao longo do período selecionado — clique num ponto pra ver os chamados</p>
                 </div>
                 <div className="granularidade-toggle">
                   {GRANULARIDADES.map((g) => (
@@ -188,7 +188,14 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
-              <VolumeTrendChart data={state.payload.indicadores.volume.porDia} granularidade={granularidade} />
+              <VolumeTrendChart
+                data={state.payload.indicadores.volume.porDia}
+                granularidade={granularidade}
+                onSelecionarPeriodo={(label) => {
+                  const { dataInicio, dataFim, titulo } = periodoDoPontoDaSerie(label, granularidade);
+                  drill.abrirLista({ ...filtroBase, dataInicio, dataFim }, titulo, fetchDashboardChamados);
+                }}
+              />
             </div>
 
             <div className="panel">

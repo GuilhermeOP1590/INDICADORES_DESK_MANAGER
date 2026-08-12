@@ -108,9 +108,34 @@ function inicioDaSemana(iso) {
   return formatISO(data);
 }
 
+function fimDaSemana(iso) {
+  const [ano, mes, dia] = iso.split("-").map(Number);
+  const data = new Date(ano, mes - 1, dia);
+  data.setDate(data.getDate() + 6);
+  return formatISO(data);
+}
+
 function mesDoISO(iso) {
   const [ano, mes] = iso.split("-");
   return `${ano}-${mes}`;
+}
+
+// Converte o ponto clicado no VolumeTrendChart (label = "AAAA-MM-DD" em "dia", segunda-feira
+// da semana em "semana", "AAAA-MM" em "mes") num filtro de data + título legível pro drill-down.
+export function periodoDoPontoDaSerie(label, granularidade) {
+  if (granularidade === "mes") {
+    const [ano, mes] = label.split("-").map(Number);
+    const dataInicio = `${label}-01`;
+    const dataFim = formatISO(new Date(ano, mes, 0));
+    return { dataInicio, dataFim, titulo: `Chamados de ${MESES_ABREV[mes - 1]}/${ano}` };
+  }
+
+  if (granularidade === "semana") {
+    const dataFim = fimDaSemana(label);
+    return { dataInicio: label, dataFim, titulo: `Chamados de ${formatBR(label)} a ${formatBR(dataFim)}` };
+  }
+
+  return { dataInicio: label, dataFim: label, titulo: `Chamados de ${formatBR(label)}` };
 }
 
 // Agrupa uma série diária [{label: "AAAA-MM-DD", total, fechados, abertos}] em semana ou mês.
