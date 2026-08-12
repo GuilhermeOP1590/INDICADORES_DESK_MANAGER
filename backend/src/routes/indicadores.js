@@ -14,6 +14,7 @@ import {
   grupoDoEquipamento,
   normalizarEquipamento,
 } from "../services/configuracaoEquipamentos.js";
+import { lerPrioridades, adicionarOuAtualizarPrioridade, removerPrioridade } from "../services/prioridades.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario } from "../services/usuarios.js";
 import { fetchUfPorCodigoCliente } from "../services/clientesUf.js";
 import { fetchSubCategorias } from "../services/subcategorias.js";
@@ -550,6 +551,129 @@ indicadoresRouter.put("/configuracao/equipamentos", (req, res) => {
   try {
     const config = salvarConfiguracaoEquipamentos(req.body);
     res.json({ config });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+// Junta a lista salva (código + nota) com o dataset já enriquecido (Manutenção + Engenharia)
+// — mesmo pipeline usado por /manutencao, /engenharia, /orcamento etc. Se um código salvo não
+// bater com nenhum chamado do dataset atual (ex: saiu do escopo depois de marcado), a linha
+// ainda aparece, só com status "Não encontrado", em vez de sumir ou quebrar a rota.
+async function buildPrioritarios({ forceRefresh = false } = {}) {
+  const { chamados: salvos } = lerPrioridades();
+  const { chamados: enriquecidos } = await carregarChamadosEnriquecidos({ forceRefresh });
+  const porCodigo = new Map(enriquecidos.map((c) => [c.CodChamado, c]));
+
+  const linhas = salvos.map((prioridade) => {
+    const chamado = porCodigo.get(prioridade.codChamado);
+
+    if (!chamado) {
+      return {
+        codChamado: prioridade.codChamado,
+        chave: null,
+        assunto: null,
+        status: "Não encontrado",
+        cliente: null,
+        uf: null,
+        especialidade: null,
+        finalizado: false,
+        diasEmAberto: null,
+        tempoResolucaoHoras: null,
+        nota: prioridade.nota,
+        adicionadoEm: prioridade.adicionadoEm,
+        encontrado: false,
+      };
+    }
+
+    const finalizado = isFinalizado(chamado);
+    const inicio = parseDateTime(chamado.DataCriacao, chamado.HoraCriacao);
+    let diasEmAberto = null;
+    let tempoResolucaoHoras = null;
+
+    if (finalizado) {
+      const fim = parseDateTime(chamado.DataFinalizacao, chamado.HoraFinalizacao);
+      tempoResolucaoHoras = inicio && fim ? Math.max(0, (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60)) : null;
+    } else {
+      diasEmAberto = inicio ? Math.round((Date.now() - inicio.getTime()) / (1000 * 60 * 60 * 24)) : null;
+    }
+
+    return {
+      codChamado: chamado.CodChamado,
+      chave: chamado.Chave,
+      assunto: chamado.Assunto,
+      status: chamado.NomeStatus,
+      cliente: chamado.cliente,
+      uf: chamado.uf,
+      especialidade: chamado.especialidade,
+      finalizado,
+      diasEmAberto,
+      tempoResolucaoHoras,
+      nota: prioridade.nota,
+      adicionadoEm: prioridade.adicionadoEm,
+      encontrado: true,
+    };
+  });
+
+  // Grupo 0 = aberto (mais antigo primeiro — parado há mais tempo pede mais atenção),
+  // grupo 1 = fechado, grupo 2 = não encontrado (sem dado confiável pra ordenar por tempo).
+  const grupo = (c) => (!c.encontrado ? 2 : c.finalizado ? 1 : 0);
+  linhas.sort((a, b) => {
+    if (grupo(a) !== grupo(b)) return grupo(a) - grupo(b);
+    if (grupo(a) === 0) return (b.diasEmAberto ?? 0) - (a.diasEmAberto ?? 0);
+    return new Date(b.adicionadoEm).getTime() - new Date(a.adicionadoEm).getTime();
+  });
+
+  const abertos = linhas.filter((c) => c.encontrado && !c.finalizado);
+  const fechados = linhas.filter((c) => c.encontrado && c.finalizado);
+  const tempoMedioAbertoDias = abertos.length
+    ? Math.round((abertos.reduce((soma, c) => soma + (c.diasEmAberto ?? 0), 0) / abertos.length) * 10) / 10
+    : null;
+
+  return {
+    resumo: { total: linhas.length, abertos: abertos.length, fechados: fechados.length, tempoMedioAbertoDias },
+    chamados: linhas,
+  };
+}
+
+indicadoresRouter.get("/prioritarios", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    res.json(await buildPrioritarios({ forceRefresh }));
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+indicadoresRouter.post("/prioritarios", async (req, res) => {
+  try {
+    const { codChamado, nota } = req.body;
+    if (!codChamado || !codChamado.trim()) {
+      res.status(400).json({ erro: "Código do chamado é obrigatório" });
+      return;
+    }
+
+    const { chamados: enriquecidos } = await carregarChamadosEnriquecidos({});
+    const existe = enriquecidos.some((c) => c.CodChamado === codChamado.trim());
+    if (!existe) {
+      res.status(400).json({ erro: `Chamado ${codChamado.trim()} não encontrado` });
+      return;
+    }
+
+    adicionarOuAtualizarPrioridade(codChamado, nota ?? "");
+    res.json(await buildPrioritarios({}));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ erro: error.message });
+  }
+});
+
+indicadoresRouter.delete("/prioritarios/:codChamado", async (req, res) => {
+  try {
+    removerPrioridade(req.params.codChamado);
+    res.json(await buildPrioritarios({}));
   } catch (error) {
     console.error(error);
     res.status(500).json({ erro: error.message });
