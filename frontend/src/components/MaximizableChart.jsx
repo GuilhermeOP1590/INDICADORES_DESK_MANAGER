@@ -22,11 +22,13 @@ export function MaximizableChart({
   resumoPorCliente,
   agregarOutros = true,
   fetcher,
+  fullWidth = false,
+  previewHeight = 220,
 }) {
   const drill = useDrillDown();
 
   return (
-    <div className="panel maximizable" onClick={() => !drill.pilha && drill.abrir()}>
+    <div className={`panel maximizable${fullWidth ? " full-width" : ""}`} onClick={() => !drill.pilha && drill.abrir()}>
       <div className="panel-header-row">
         <div>
           <h2>{title}</h2>
@@ -38,7 +40,7 @@ export function MaximizableChart({
         data={data}
         color={color}
         limit={limit}
-        height={220}
+        height={previewHeight}
         formatValue={formatValue}
         agregarOutros={agregarOutros}
       />
@@ -49,7 +51,10 @@ export function MaximizableChart({
             (() => {
               const selecionar = (label, agregado, entry) => {
                 if (agregado) {
-                  const foraDoTopo = data.slice(0, 30).map((d) => d.label);
+                  // "Outros (agregado)" só aparece no gráfico top-N (ramo abaixo, mais de
+                  // LIMITE_BARRAS_MAXIMIZADO itens) — o corte precisa refletir o N real desse
+                  // gráfico, não um número arbitrário.
+                  const foraDoTopo = data.slice(0, TOP_N_MAXIMIZADO).map((d) => d.label);
                   drill.abrirLista(
                     { ...filtroBase, dimensao: dimensaoFiltro, foraDoTopo: foraDoTopo.join("|") },
                     "Outros (agregado)",
@@ -85,7 +90,7 @@ export function MaximizableChart({
                     color={color}
                     limit={TOP_N_MAXIMIZADO}
                     height={TOP_N_MAXIMIZADO * 26}
-                    agregarOutros={false}
+                    agregarOutros={agregarOutros}
                     onBarClick={selecionar}
                     formatValue={formatValue}
                   />

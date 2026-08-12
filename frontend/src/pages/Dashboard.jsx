@@ -6,12 +6,12 @@ import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { ChamadosPorAreaChart } from "../components/ChamadosPorAreaChart.jsx";
 import { RankedClientePanel } from "../components/RankedClientePanel.jsx";
-import { DonutChart } from "../components/DonutChart.jsx";
 import { CausaPanel } from "../components/CausaPanel.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
 import { UfSelect } from "../components/UfSelect.jsx";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { periodoMesFiscal, formatHoras, periodoDoPontoDaSerie } from "../lib/datas.js";
 import { Modal } from "../components/Modal.jsx";
 import { DrillDownContent } from "../components/DrillDownContent.jsx";
@@ -34,7 +34,8 @@ export default function Dashboard() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [granularidade, setGranularidade] = useState("dia");
-  const [busca, setBusca] = useState("");
+  const [buscaInput, setBuscaInput] = useState("");
+  const busca = useDebouncedValue(buscaInput);
   const [uf, setUf] = useState("");
   const [tipoAtivo, setTipoAtivo] = useState(GERAL);
   const ufsDisponiveis = useUfsDisponiveis();
@@ -95,8 +96,8 @@ export default function Dashboard() {
           type="text"
           className="search-input"
           placeholder="Buscar por assunto, equipamento ou código do chamado..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          value={buscaInput}
+          onChange={(e) => setBuscaInput(e.target.value)}
         />
         <UfSelect value={uf} onChange={setUf} ufs={ufsDisponiveis} />
       </div>
@@ -217,26 +218,17 @@ export default function Dashboard() {
               />
             </div>
 
-            <div className="panel">
-              <h2>Aberto x Finalizado</h2>
-              <p className="subtitle">Proporção dos chamados do período</p>
-              <DonutChart
-                data={[
-                  { label: "Em aberto", total: detalhe.volume.abertos },
-                  { label: "Finalizados", total: detalhe.volume.fechados },
-                ]}
-                height={220}
-              />
-            </div>
-
             <MaximizableChart
               title="Chamados por status"
               subtitle="Distribuição atual por situação — clique numa barra"
               data={detalhe.volume.porStatus}
               color="var(--series-1)"
+              limit={10}
               filtroBase={filtroBase}
               dimensaoFiltro="status"
               fetcher={fetchDashboardChamados}
+              fullWidth
+              previewHeight={320}
             />
 
             <div className="panel">

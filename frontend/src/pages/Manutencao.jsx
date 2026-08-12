@@ -12,6 +12,7 @@ import { Modal } from "../components/Modal.jsx";
 import { DrillDownContent } from "../components/DrillDownContent.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { periodoMesFiscal } from "../lib/datas.js";
 
 const GERAL = "__geral__";
@@ -30,7 +31,8 @@ export default function Manutencao() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [tipoAtivo, setTipoAtivo] = useState(GERAL);
-  const [busca, setBusca] = useState("");
+  const [buscaInput, setBuscaInput] = useState("");
+  const busca = useDebouncedValue(buscaInput);
   const [uf, setUf] = useState("");
   const [detalhesAprovacao, setDetalhesAprovacao] = useState(null);
   const drill = useDrillDown();
@@ -77,8 +79,8 @@ export default function Manutencao() {
           type="text"
           className="search-input"
           placeholder="Buscar por assunto, equipamento ou código do chamado..."
-          value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          value={buscaInput}
+          onChange={(e) => setBuscaInput(e.target.value)}
         />
         <UfSelect value={uf} onChange={setUf} ufs={ufsDisponiveis} />
       </div>

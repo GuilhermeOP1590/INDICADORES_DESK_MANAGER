@@ -71,10 +71,11 @@ export default function ConfiguracaoEquipamentos() {
     setSalvando(true);
     try {
       const { config } = await salvarConfiguracaoEquipamentos(state.config);
-      setState((s) => ({ ...s, config }));
+      setState((s) => ({ ...s, config, error: null }));
       setSalvo(true);
     } catch (error) {
       setState((s) => ({ ...s, error: error.message }));
+      setSalvo(false);
     } finally {
       setSalvando(false);
     }
@@ -97,6 +98,8 @@ export default function ConfiguracaoEquipamentos() {
           {salvando ? "Salvando..." : salvo ? "Salvo ✓" : "Salvar alterações"}
         </button>
       </div>
+
+      {state.error && <div className="state-banner error">Erro ao salvar: {state.error}</div>}
 
       <div className="equip-summary">
         {resumoPorGrupo.map((g) => (

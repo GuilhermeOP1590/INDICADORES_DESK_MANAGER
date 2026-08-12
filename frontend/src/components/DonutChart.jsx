@@ -32,7 +32,7 @@ export function DonutChart({ data, height = 260, onSliceClick, formatValue }) {
           cornerRadius={3}
           cursor={onSliceClick ? "pointer" : "default"}
           onClick={onSliceClick ? (entry) => onSliceClick(entry.label) : undefined}
-          label={({ total: valor }) => `${Math.round((valor / total) * 100)}%`}
+          label={({ total: valor }) => (total > 0 ? `${Math.round((valor / total) * 100)}%` : "")}
           labelLine={{ stroke: "var(--baseline)" }}
         >
           {data.map((entry, index) => (

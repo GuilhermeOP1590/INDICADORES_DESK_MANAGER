@@ -2,13 +2,18 @@ import { Bar, BarChart, CartesianGrid, Legend, LabelList, ResponsiveContainer, T
 
 // Total (fechados+abertos) impresso ao lado da barra — sem isso o usuário só vê a composição,
 // não o volume total daquela área, que é a primeira pergunta ("quantas atividades são de
-// Engenharia/Manutenção").
+// Engenharia/Manutenção"). O % de resolução (fechados/total) vem logo depois, em destaque —
+// segunda pergunta natural ao comparar áreas: não só "quantos", mas "quanto disso já foi resolvido".
 function TotalLabel({ x = 0, y = 0, width = 0, height = 0, index, chartData }) {
-  const total = chartData[index]?.total;
-  if (!total) return null;
+  const item = chartData[index];
+  if (!item?.total) return null;
+  const percentual = Math.round((item.fechados / item.total) * 100);
   return (
-    <text x={x + width + 8} y={y + height / 2} dy={4} fill="var(--text-secondary)" fontSize={11}>
-      {total}
+    <text x={x + width + 8} y={y + height / 2} dy={4} fontSize={11}>
+      <tspan fill="var(--text-secondary)">{item.total}</tspan>
+      <tspan fill="var(--status-good)" dx={5} fontWeight={600}>
+        {percentual}%
+      </tspan>
     </text>
   );
 }
@@ -20,7 +25,7 @@ export function ChamadosPorAreaChart({ data, onBarClick, height = 200 }) {
 
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 48, top: 4, bottom: 4 }}>
+      <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 64, top: 4, bottom: 4 }}>
         <CartesianGrid horizontal={false} stroke="var(--gridline)" />
         <XAxis
           type="number"

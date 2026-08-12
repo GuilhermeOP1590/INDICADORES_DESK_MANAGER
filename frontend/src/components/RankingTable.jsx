@@ -40,7 +40,7 @@ export function RankingTable({ data, formatValue, onSelecionar, nomeColuna = "No
         </thead>
         <tbody>
           {sorted.map((d) => (
-            <tr key={d.label} className="clickable-row" onClick={() => onSelecionar?.(d.label, Boolean(d.agregado))}>
+            <tr key={d.label} className="clickable-row" onClick={() => onSelecionar?.(d.label, Boolean(d.agregado), d)}>
               <td>{d.label}</td>
               <td className="num">{formatValue ? formatValue(d.total) : d.total}</td>
             </tr>
