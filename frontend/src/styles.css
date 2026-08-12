@@ -662,3 +662,18 @@ td.num, th.num {
 .equip-grupo-badge.sem-grupo {
   color: var(--status-warning);
 }
+
+.remove-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.remove-btn:hover {
+  border-color: var(--status-critical);
+  color: var(--status-critical);
+}

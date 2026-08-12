@@ -4,6 +4,7 @@ import Manutencao from "./pages/Manutencao.jsx";
 import Engenharia from "./pages/Engenharia.jsx";
 import Orcamento from "./pages/Orcamento.jsx";
 import Performance from "./pages/Performance.jsx";
+import ChamadosPrioritarios from "./pages/ChamadosPrioritarios.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
 import logoEconomart from "./assets/economart-logo.png";
 
@@ -31,6 +32,9 @@ export default function App() {
           <NavLink to="/performance" className={({ isActive }) => (isActive ? "active" : "")}>
             Performance
           </NavLink>
+          <NavLink to="/prioritarios" className={({ isActive }) => (isActive ? "active" : "")}>
+            Prioritários
+          </NavLink>
           <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? "active" : "")}>
             Configurações
           </NavLink>
@@ -43,6 +47,7 @@ export default function App() {
         <Route path="/engenharia" element={<Engenharia />} />
         <Route path="/orcamento" element={<Orcamento />} />
         <Route path="/performance" element={<Performance />} />
+        <Route path="/prioritarios" element={<ChamadosPrioritarios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
       </Routes>
     </div>
