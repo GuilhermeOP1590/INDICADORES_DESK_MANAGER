@@ -123,3 +123,7 @@ export async function removerPrioridade(codChamado) {
   if (!response.ok) throw new Error(data.erro || "Falha ao remover chamado prioritário");
   return data;
 }
+
+export function fetchEquipamentosPorIc(opts) {
+  return getJson("/api/configuracao/equipamentos/por-ic", opts);
+}
