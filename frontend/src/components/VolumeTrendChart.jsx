@@ -49,6 +49,14 @@ const TOOLTIP_STYLE = {
   labelStyle: { color: "var(--text-primary)" },
 };
 
+// Data do tooltip em vermelho/negrito quando o ponto sob o mouse é fim de semana — funciona
+// mesmo quando o rótulo daquele dia não é um dos exibidos no eixo (ver TickPeriodo acima).
+function tooltipLabelFormatter(label, payload) {
+  const fimDeSemana = payload?.[0]?.payload?.fimDeSemana;
+  if (!fimDeSemana) return label;
+  return <span style={{ fontWeight: 700, color: "var(--status-critical)" }}>{label}</span>;
+}
+
 // Total do período fica acima da pilha (fechados+abertos) — sem isso o usuário só vê a
 // composição, não o volume criado naquele dia, que é a pergunta original do gráfico.
 function TotalLabel({ x = 0, y = 0, width = 0, index, chartData }) {
@@ -129,7 +137,7 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90, onSel
         tickLine={false}
       />
       <YAxis tick={{ fill: "var(--text-muted)", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
-      <Tooltip cursor={{ fill: "var(--gridline)" }} {...TOOLTIP_STYLE} />
+      <Tooltip cursor={{ fill: "var(--gridline)" }} {...TOOLTIP_STYLE} labelFormatter={tooltipLabelFormatter} />
       <Legend wrapperStyle={{ fontSize: 12 }} />
       <Bar dataKey="fechados" name="Fechados" stackId="volume" fill="var(--status-good)" maxBarSize={64} cursor={onSelecionarPeriodo ? "pointer" : "default"} />
       <Bar
@@ -158,7 +166,7 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90, onSel
         minTickGap={24}
       />
       <YAxis tick={{ fill: "var(--text-muted)", fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} width={32} />
-      <Tooltip cursor={{ stroke: "var(--baseline)" }} {...TOOLTIP_STYLE} />
+      <Tooltip cursor={{ stroke: "var(--baseline)" }} {...TOOLTIP_STYLE} labelFormatter={tooltipLabelFormatter} />
       <Legend wrapperStyle={{ fontSize: 12 }} />
       <Area
         type="monotone"
