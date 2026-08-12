@@ -9,6 +9,14 @@ const cache = new Map(); // chave -> { expiresAt, historico }
 const CAMPO_EXTRA_VALOR = "_8575";
 const CAMPO_EXTRA_ORCAMENTO_CONFIRMADO = "_9637";
 
+// "_9293" é o campo extra "Horímetro" (Tipo: Interações), descoberto via lista_de_campos_extras.
+// "ICs" é uma coluna NATIVA (não um campo extra numérico) — devolve o(s) ativo(s) do catálogo
+// de ICs do DeskManager vinculado(s) àquela interação (ex: "300 - MTZ - Empilhadeira 06"),
+// descoberta por tentativa/erro direto no parâmetro Colunas. Ver
+// docs/superpowers/specs/2026-08-12-equipamentos-por-ic-design.md.
+const CAMPO_EXTRA_HORIMETRO = "_9293";
+const CAMPO_ICS = "ICs";
+
 async function fetchInteracoes({ chave, codChamado }) {
   const data = await callDeskMcpTool("dados_da_interacao_do_chamados", {
     body: {
@@ -21,6 +29,8 @@ async function fetchInteracoes({ chave, codChamado }) {
         DataAcao: "on",
         [CAMPO_EXTRA_VALOR]: "on",
         [CAMPO_EXTRA_ORCAMENTO_CONFIRMADO]: "on",
+        [CAMPO_EXTRA_HORIMETRO]: "on",
+        [CAMPO_ICS]: "on",
       },
     },
   });
@@ -67,6 +77,30 @@ function extrairDataAprovacao(interacoes) {
   return paraIso(comValor.DataAcao);
 }
 
+// Junta os Ics de TODAS as interações da chamada (não só a mais recente) — o mesmo chamado
+// pode referenciar o equipamento em ações diferentes ao longo do atendimento. O formato
+// observado é um valor só; a separação por vírgula/ponto-e-vírgula é proteção defensiva caso
+// apareça mais de um Ic na mesma interação.
+export function extrairIcs(interacoes) {
+  const nomes = new Set();
+  for (const interacao of interacoes) {
+    const bruto = interacao[CAMPO_ICS];
+    if (!bruto) continue;
+    for (const nome of bruto.split(/[,;]/)) {
+      const limpo = nome.trim();
+      if (limpo) nomes.add(limpo);
+    }
+  }
+  return [...nomes];
+}
+
+// Mesmo padrão de extrairValorAprovacao: interações vêm da mais recente pra mais antiga, o
+// horímetro "vale" é o da última interação que o preencheu.
+export function extrairHorimetro(interacoes) {
+  const comHorimetro = interacoes.find((interacao) => interacao[CAMPO_EXTRA_HORIMETRO]);
+  return comHorimetro ? comHorimetro[CAMPO_EXTRA_HORIMETRO] : null;
+}
+
 export async function obterHistoricoChamado({ chave, codChamado }, { forceRefresh = false } = {}) {
   const cacheado = cache.get(chave);
   if (!forceRefresh && cacheado && cacheado.expiresAt > Date.now()) {
@@ -79,6 +113,8 @@ export async function obterHistoricoChamado({ chave, codChamado }, { forceRefres
     passouPorAguardandoAprovacao: extrairPassouPorAguardandoAprovacao(interacoes),
     valorAprovacao: extrairValorAprovacao(interacoes),
     dataAprovacao: extrairDataAprovacao(interacoes),
+    ics: extrairIcs(interacoes),
+    horimetro: extrairHorimetro(interacoes),
   };
 
   cache.set(chave, { historico, expiresAt: Date.now() + TTL_MS });
@@ -107,6 +143,8 @@ export async function obterHistoricoEmLote(chamados, { concorrencia = 60, forceR
       passouPorAguardandoAprovacao: false,
       valorAprovacao: null,
       dataAprovacao: null,
+      ics: [],
+      horimetro: null,
     }))
   );
 
