@@ -4,6 +4,10 @@ import { fetchUsuarios, fetchCodigoClientePorUsuario } from "./usuarios.js";
 import { fetchUfPorCodigoCliente } from "./clientesUf.js";
 import { fetchChamados } from "./chamados.js";
 
+// "APROVADORES" é um cliente/unidade fictício, criado só pra testar o fluxo de aprovação de
+// orçamento no DeskManager — não é uma unidade real, não deve aparecer em nenhum indicador.
+export const CLIENTE_FICTICIO = "APROVADORES";
+
 // ChaveUsuario -> CodigoCliente (usuarios.js) -> Uf (clientesUf.js). Ver
 // decisoes/uf-do-chamado.md no Obsidian pra a origem desse encadeamento.
 export function ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }) {
@@ -33,10 +37,13 @@ export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsua
     const classificacao = classificarChamado(chamado, subCategoriaIndex);
     if (!classificacao) continue;
 
+    const cliente = clientePorUsuario.get(chamado.ChaveUsuario) ?? null;
+    if (cliente === CLIENTE_FICTICIO) continue;
+
     enriquecidos.push({
       ...chamado,
       ...classificacao,
-      cliente: clientePorUsuario.get(chamado.ChaveUsuario) ?? null,
+      cliente,
       uf: ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }),
     });
   }

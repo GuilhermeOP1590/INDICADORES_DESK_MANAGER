@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
 import { buildIndicadores, buildBacklog, isFinalizado, parseDateTime } from "../services/indicadores.js";
-import { carregarChamadosEnriquecidos, anexarUf, anexarArea } from "../services/enriquecimento.js";
+import { carregarChamadosEnriquecidos, anexarUf, anexarArea, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
@@ -104,7 +104,9 @@ indicadoresRouter.get("/indicadores", async (req, res) => {
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
     const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
-    const comCliente = comArea.map((c) => ({ ...c, cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null }));
+    const comCliente = comArea
+      .map((c) => ({ ...c, cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null }))
+      .filter((c) => c.cliente !== CLIENTE_FICTICIO);
     const semCancelados = excluirCancelados(comCliente);
     const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(semCancelados, req.query.q), req.query.uf);
     const noPeriodo = filtrarPorData(comFiltrosGlobais, periodo);
@@ -141,7 +143,9 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
+    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)).filter(
+      (c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) !== CLIENTE_FICTICIO
+    );
     const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(excluirCancelados(comArea), q), req.query.uf);
 
     // Backlog (criadosAntes) fica FORA do período selecionado por definição — não faz
@@ -201,14 +205,17 @@ indicadoresRouter.get("/indicadores/causas", async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "true";
     const periodo = lerPeriodo(req);
-    const [{ data }, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
+    const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
       fetchChamados({ forceRefresh }),
+      fetchUsuarios({ forceRefresh }),
       fetchCodigoClientePorUsuario({ forceRefresh }),
       fetchUfPorCodigoCliente({ forceRefresh }),
       fetchSubCategorias({ forceRefresh }),
     ]);
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
+    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)).filter(
+      (c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) !== CLIENTE_FICTICIO
+    );
 
     const noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(comArea), periodo), req.query.q), req.query.uf);
     res.json(await carregarCausas(noPeriodo));
