@@ -42,6 +42,9 @@ function PerfilIc({ ic, onClose }) {
           label="Recorrência média"
           value={ic.recorrenciaDias !== null ? `a cada ${ic.recorrenciaDias}d` : "poucos dados"}
         />
+        <StatTile label="MTTF" value={ic.mttfHoras !== null ? `${ic.mttfHoras}h` : "poucos dados"} />
+        <StatTile label="MTTR" value={ic.mttrHoras !== null ? `${ic.mttrHoras}h` : "poucos dados"} />
+        <StatTile label="Tempo aguardando peça" value={`${ic.tempoAguardandoPecaDiasTotal} dias`} />
       </section>
 
       <div className="panel">
