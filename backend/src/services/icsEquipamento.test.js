@@ -7,6 +7,9 @@ function chamado(overrides) {
     Chave: 1,
     CodChamado: "0000-000001",
     DataCriacao: "2026-08-01",
+    HoraCriacao: "08:00:00",
+    DataFinalizacao: null,
+    HoraFinalizacao: null,
     tipo: "Preventiva",
     cliente: null,
     NomeStatus: null,
@@ -113,6 +116,117 @@ test("buildPorIc leva o status atual de cada chamado pro histórico do Ic", () =
   const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
   const [resultado] = buildPorIc(chamados, historicoMap);
   assert.equal(resultado.chamados[0].status, "Aguardando Aprovação");
+});
+
+test("buildPorIc calcula mttfHoras como a média das diferenças de horímetro entre Corretivas", () => {
+  const chamados = [
+    chamado({ Chave: 1, tipo: "Corretiva", DataCriacao: "2026-08-01" }),
+    chamado({ Chave: 2, tipo: "Corretiva", DataCriacao: "2026-08-05" }),
+    chamado({ Chave: 3, tipo: "Corretiva", DataCriacao: "2026-08-10" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: "1000", causa: null, valorAprovacao: null }],
+    [2, { ics: ["Ic A"], horimetro: "1050", causa: null, valorAprovacao: null }],
+    [3, { ics: ["Ic A"], horimetro: "1120", causa: null, valorAprovacao: null }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttfHoras, 60);
+});
+
+test("buildPorIc descarta leitura de horímetro decrescente sem quebrar o delta seguinte", () => {
+  const chamados = [
+    chamado({ Chave: 1, tipo: "Corretiva", DataCriacao: "2026-08-01" }),
+    chamado({ Chave: 2, tipo: "Corretiva", DataCriacao: "2026-08-05" }),
+    chamado({ Chave: 3, tipo: "Corretiva", DataCriacao: "2026-08-10" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: "1000", causa: null, valorAprovacao: null }],
+    [2, { ics: ["Ic A"], horimetro: "900", causa: null, valorAprovacao: null }],
+    [3, { ics: ["Ic A"], horimetro: "1080", causa: null, valorAprovacao: null }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttfHoras, 80);
+});
+
+test("buildPorIc retorna mttfHoras null com menos de 2 leituras válidas", () => {
+  const chamados = [chamado({ Chave: 1, tipo: "Corretiva" })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: "1000", causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttfHoras, null);
+});
+
+test("buildPorIc ignora chamados que não são Corretiva no cálculo de mttfHoras", () => {
+  const chamados = [
+    chamado({ Chave: 1, tipo: "Preventiva", DataCriacao: "2026-08-01" }),
+    chamado({ Chave: 2, tipo: "Preventiva", DataCriacao: "2026-08-05" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: "1000", causa: null, valorAprovacao: null }],
+    [2, { ics: ["Ic A"], horimetro: "1050", causa: null, valorAprovacao: null }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttfHoras, null);
+});
+
+test("buildPorIc calcula mttrHoras como a média do tempo de reparo das Corretivas finalizadas", () => {
+  const chamados = [
+    chamado({
+      Chave: 1,
+      tipo: "Corretiva",
+      DataCriacao: "2026-08-01",
+      HoraCriacao: "08:00:00",
+      DataFinalizacao: "2026-08-01",
+      HoraFinalizacao: "12:00:00",
+    }),
+    chamado({
+      Chave: 2,
+      tipo: "Corretiva",
+      DataCriacao: "2026-08-02",
+      HoraCriacao: "08:00:00",
+      DataFinalizacao: "2026-08-02",
+      HoraFinalizacao: "20:00:00",
+    }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }],
+    [2, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttrHoras, 8);
+});
+
+test("buildPorIc ignora Corretiva não finalizada no cálculo de mttrHoras", () => {
+  const chamados = [chamado({ Chave: 1, tipo: "Corretiva", DataFinalizacao: null })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttrHoras, null);
+});
+
+test("buildPorIc retorna mttrHoras null sem nenhuma Corretiva finalizada", () => {
+  const chamados = [chamado({ Chave: 1, tipo: "Preventiva" })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttrHoras, null);
+});
+
+test("buildPorIc soma tempoAguardandoPecaDiasTotal entre chamados de tipos diferentes", () => {
+  const chamados = [
+    chamado({ Chave: 1, tipo: "Corretiva" }),
+    chamado({ Chave: 2, tipo: "Preventiva" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null, tempoAguardandoPecaDias: 3 }],
+    [2, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null, tempoAguardandoPecaDias: 1.5 }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.tempoAguardandoPecaDiasTotal, 4.5);
+});
+
+test("buildPorIc retorna tempoAguardandoPecaDiasTotal 0 sem nenhuma ocorrência", () => {
+  const chamados = [chamado({ Chave: 1 })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.tempoAguardandoPecaDiasTotal, 0);
 });
 
 test("buildPorIc ordena por total desc", () => {

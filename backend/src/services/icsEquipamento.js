@@ -1,3 +1,5 @@
+import { parseDateTime } from "./indicadores.js";
+
 // Agrupa chamados de Manutenção por Ic (equipamento específico do catálogo de Ativos do
 // DeskManager, ex: "300 - MTZ - Empilhadeira 06") — granularidade mais fina que "grupo de
 // equipamento" (configuracaoEquipamentos.js), que agrupa por categoria, não por unidade física.
@@ -15,12 +17,16 @@ export function buildPorIc(chamados, historicoMap) {
       chave: chamado.Chave,
       codChamado: chamado.CodChamado,
       dataCriacao: chamado.DataCriacao,
+      horaCriacao: chamado.HoraCriacao ?? null,
+      dataFinalizacao: chamado.DataFinalizacao ?? null,
+      horaFinalizacao: chamado.HoraFinalizacao ?? null,
       tipo: chamado.tipo,
       causa: historico?.causa ?? null,
       valorAprovacao: historico?.valorAprovacao ?? null,
       horimetro: historico?.horimetro ?? null,
       cliente: chamado.cliente ?? null,
       status: chamado.NomeStatus ?? null,
+      tempoAguardandoPecaDias: historico?.tempoAguardandoPecaDias ?? 0,
     };
 
     for (const ic of ics) {
@@ -45,6 +51,10 @@ export function buildPorIc(chamados, historicoMap) {
         corretiva,
         custoTotal,
         recorrenciaDias: calcularRecorrenciaDias(ordenados.map((c) => c.dataCriacao).filter(Boolean)),
+        mttfHoras: calcularMttfHoras(ordenados.filter((c) => c.tipo === "Corretiva")),
+        mttrHoras: calcularMttrHoras(ordenados.filter((c) => c.tipo === "Corretiva")),
+        tempoAguardandoPecaDiasTotal:
+          Math.round(ordenados.reduce((soma, c) => soma + (c.tempoAguardandoPecaDias ?? 0), 0) * 10) / 10,
         chamados: ordenados,
       };
     })
@@ -62,6 +72,47 @@ function clienteMaisFrequente(lista) {
   }
   if (contagem.size === 0) return null;
   return [...contagem.entries()].sort((a, b) => b[1] - a[1])[0][0];
+}
+
+// Horímetro é cumulativo — uma leitura menor que a anterior é erro de cadastro, não o
+// equipamento "voltando no tempo". Descarta a leitura inteira (não só o delta), senão o
+// próximo delta também sai errado. `corretivas` já vem ordenado por data (herda a ordem de
+// `ordenados`).
+function calcularMttfHoras(corretivas) {
+  const leituras = [];
+  for (const c of corretivas) {
+    if (c.horimetro === null) continue;
+    const valor = Number(c.horimetro);
+    if (Number.isNaN(valor)) continue;
+    if (leituras.length === 0 || valor > leituras[leituras.length - 1]) {
+      leituras.push(valor);
+    }
+  }
+
+  if (leituras.length < 2) return null;
+
+  const deltas = [];
+  for (let i = 1; i < leituras.length; i++) {
+    deltas.push(leituras[i] - leituras[i - 1]);
+  }
+  return Math.round((deltas.reduce((soma, d) => soma + d, 0) / deltas.length) * 10) / 10;
+}
+
+// Não desconta tempo em "Aguardando Aprovação" — abertura→finalização direto, mesmo padrão de
+// tempoResolucaoHoras usado no resto do backend.
+function calcularMttrHoras(corretivas) {
+  const duracoes = [];
+  for (const c of corretivas) {
+    if (!c.dataFinalizacao || c.dataFinalizacao === "0000-00-00") continue;
+    const inicio = parseDateTime(c.dataCriacao, c.horaCriacao);
+    const fim = parseDateTime(c.dataFinalizacao, c.horaFinalizacao);
+    if (!inicio || !fim) continue;
+    const horas = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
+    if (horas >= 0) duracoes.push(horas);
+  }
+
+  if (duracoes.length === 0) return null;
+  return Math.round((duracoes.reduce((soma, h) => soma + h, 0) / duracoes.length) * 10) / 10;
 }
 
 function calcularRecorrenciaDias(datasOrdenadasIso) {
