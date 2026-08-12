@@ -46,9 +46,20 @@ export function RankingTable({
         <thead>
           <tr>
             <SortableTh label={nomeColuna} sortKeyName="label" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
-            {colunasExtras.map((col) => (
-              <th key={col.header}>{col.header}</th>
-            ))}
+            {colunasExtras.map((col) =>
+              col.sortKeyName ? (
+                <SortableTh
+                  key={col.header}
+                  label={col.header}
+                  sortKeyName={col.sortKeyName}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                />
+              ) : (
+                <th key={col.header}>{col.header}</th>
+              )
+            )}
             <SortableTh label={nomeValor} sortKeyName="total" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="num" />
           </tr>
         </thead>

@@ -199,8 +199,13 @@ export default function EquipamentosPorIc() {
                   nomeColuna="Equipamento (Ic)"
                   onSelecionar={selecionarIc}
                   colunasExtras={[
-                    { header: "Cliente", render: (d) => d.cliente ?? "—", valorBusca: (d) => d.cliente ?? "" },
-                    { header: "Custo total", render: (d) => formatBRL(d.custoTotal) },
+                    {
+                      header: "Cliente",
+                      render: (d) => d.cliente ?? "—",
+                      valorBusca: (d) => d.cliente ?? "",
+                      sortKeyName: "cliente",
+                    },
+                    { header: "Custo total", render: (d) => formatBRL(d.custoTotal), sortKeyName: "custoTotal" },
                   ]}
                 />
               </div>
