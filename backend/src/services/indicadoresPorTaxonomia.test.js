@@ -43,3 +43,34 @@ test("buildIndicadoresEngenharia não inclui porGrupoEquipamento (Engenharia nã
   assert.equal(resultado.geral.porGrupoEquipamento, undefined);
   assert.equal(resultado.porAtividadeDetalhe["Elétrica"].porGrupoEquipamento, undefined);
 });
+
+// "Orçamento Reprovado" não está em nenhum dos 3 baldes configurados por padrão
+// (configuracaoIndicadores.js#PADRAO) — cai em "outro", rotulado "Ignorar (não entra nos
+// indicadores de status)" na UI de Configurações > Status.
+test("buildIndicadoresManutencao exclui status 'outro' de abertos/concluidos em operadores/porUf/porClienteDetalhado", () => {
+  const chamados = [
+    { tipo: "Corretiva", NomeOperador: "Ana", SobrenomeOperador: "Silva", uf: "SP", cliente: "Loja A", NomeStatus: "Resolvido" },
+    {
+      tipo: "Corretiva",
+      NomeOperador: "Ana",
+      SobrenomeOperador: "Silva",
+      uf: "SP",
+      cliente: "Loja A",
+      NomeStatus: "Orçamento Reprovado",
+    },
+  ];
+
+  const resultado = buildIndicadoresManutencao(chamados);
+
+  const operador = resultado.geral.operadores.find((o) => o.operador === "Ana Silva");
+  assert.equal(operador.total, 2);
+  assert.equal(operador.concluidos, 1);
+  assert.equal(operador.abertos, 0);
+  assert.equal(operador.percentualResolucao, 100);
+
+  const uf = resultado.geral.porUf.find((u) => u.uf === "SP");
+  assert.equal(uf.abertos, 0);
+
+  const cliente = resultado.geral.porClienteDetalhado.find((c) => c.cliente === "Loja A");
+  assert.equal(cliente.abertos, 0);
+});

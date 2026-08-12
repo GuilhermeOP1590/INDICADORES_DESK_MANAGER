@@ -107,9 +107,11 @@ function buildOperadores(chamados) {
       atual.fechados += 1;
     } else if (classe === "aguardandoAprovacao") {
       atual.aguardandoAprovacao += 1;
-    } else {
+    } else if (classe === "aberto") {
       atual.abertos += 1;
     }
+    // classe "outro" (ex: status marcado como "Ignorar" em Configurações > Status) só soma no
+    // total, não em abertos/concluidos — não pode nem ajudar nem prejudicar percentualResolucao.
 
     porOperador.set(nome, atual);
   }
@@ -135,9 +137,10 @@ function buildPorUf(chamados) {
     if (classe === "concluido") {
       atual.concluidos += 1;
       atual.fechados += 1;
-    } else if (classe !== "aguardandoAprovacao") {
+    } else if (classe === "aberto") {
       atual.abertos += 1;
     }
+    // classe "outro" (status marcado como "Ignorar") só soma no total, não em abertos/concluidos.
 
     porUf.set(uf, atual);
   }
@@ -163,9 +166,10 @@ function buildPorCliente(chamados) {
     if (classe === "concluido") {
       atual.concluidos += 1;
       atual.fechados += 1;
-    } else if (classe !== "aguardandoAprovacao") {
+    } else if (classe === "aberto") {
       atual.abertos += 1;
     }
+    // classe "outro" (status marcado como "Ignorar") só soma no total, não em abertos/concluidos.
 
     porCliente.set(cliente, atual);
   }

@@ -383,9 +383,10 @@ indicadoresRouter.get("/clientes/resumo", async (req, res) => {
       if (classe === "concluido") {
         atual.concluidos += 1;
         atual.fechados += 1;
-      } else if (classe !== "aguardandoAprovacao") {
+      } else if (classe === "aberto") {
         atual.abertos += 1;
       }
+      // classe "outro" só soma no total, não em abertos/concluidos.
 
       porEspecialidade.set(c.especialidade, atual);
     }
