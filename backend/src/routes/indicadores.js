@@ -16,6 +16,7 @@ import {
 } from "../services/configuracaoEquipamentos.js";
 import { lerPrioridades, adicionarOuAtualizarPrioridade, removerPrioridade } from "../services/prioridades.js";
 import { buildPorIc } from "../services/icsEquipamento.js";
+import { buildTendenciaMensal } from "../services/tendenciaMensalManutencao.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario } from "../services/usuarios.js";
 import { fetchUfPorCodigoCliente } from "../services/clientesUf.js";
 import { fetchSubCategorias } from "../services/subcategorias.js";
@@ -710,6 +711,28 @@ indicadoresRouter.get("/configuracao/equipamentos/por-ic", async (req, res) => {
     const totalComIc = filtrados.filter((c) => (historicoMap.get(c.Chave)?.ics?.length ?? 0) > 0).length;
 
     res.json({ ics, totalChamados: filtrados.length, totalComIc, totalSemIc: filtrados.length - totalComIc });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+indicadoresRouter.get("/manutencao/tendencia-mensal", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const periodo = lerPeriodo(req);
+    if (!periodo.dataInicio || !periodo.dataFim) {
+      res.status(400).json({ erro: "Período (dataInicio e dataFim) é obrigatório" });
+      return;
+    }
+
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    const noPeriodo = filtrarPorData(excluirCancelados(chamados), periodo).filter((c) => c.especialidade === "Manutenção");
+
+    const historicoMap = await obterHistoricoEmLote(noPeriodo);
+    const tendencia = buildTendenciaMensal(noPeriodo, historicoMap);
+
+    res.json({ tendencia, totalChamados: noPeriodo.length });
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
