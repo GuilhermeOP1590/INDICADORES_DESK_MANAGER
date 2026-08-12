@@ -64,10 +64,15 @@ function TotalLabel({ x = 0, y = 0, width = 0, index, chartData }) {
 // Marca sábado/domingo com uma linha vertical tracejada — uma faixa (ReferenceArea) com
 // x1=x2 fica com largura zero e some quando o eixo usa escala de ponto (caso do gráfico de
 // área, com mais de 8 dias), então uma linha é a forma que funciona nos dois modos.
+// Vermelha (não cinza) porque é o único marcador de fim de semana garantido pra TODO
+// sábado/domingo — o rótulo de texto do eixo (TickPeriodo) só existe nos dias que o recharts
+// decide mostrar (minTickGap/preserveStartEnd descartam a maioria num período longo).
 function LinhasFimDeSemana({ chartData }) {
   return chartData
     .filter((d) => d.fimDeSemana)
-    .map((d) => <ReferenceLine key={d.periodo} x={d.periodo} stroke="var(--text-muted)" strokeDasharray="3 3" />);
+    .map((d) => (
+      <ReferenceLine key={d.periodo} x={d.periodo} stroke="var(--status-critical)" strokeOpacity={0.5} strokeDasharray="3 3" />
+    ));
 }
 
 // Rótulo do eixo X em vermelho/negrito nos dias de fim de semana — reforça visualmente a
@@ -181,7 +186,7 @@ export function VolumeTrendChart({ data, granularidade = "dia", days = 90, onSel
     <div>
       {granularidade === "dia" && (
         <p className="meta" style={{ marginBottom: 4 }}>
-          Linhas tracejadas verticais marcam sábados e domingos
+          Linhas tracejadas vermelhas marcam sábados e domingos
         </p>
       )}
       <div style={{ overflowX: "auto" }}>
