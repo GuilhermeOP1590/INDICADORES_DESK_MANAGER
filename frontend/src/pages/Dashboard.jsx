@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
-import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
+import { ClientePerformancePanel } from "../components/ClientePerformancePanel.jsx";
 import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { ChamadosPorAreaChart } from "../components/ChamadosPorAreaChart.jsx";
@@ -173,10 +173,10 @@ export default function Dashboard() {
             />
           </section>
 
-          <TeamPerformanceCards
-            operadores={detalhe.operadores}
+          <ClientePerformancePanel
+            porCliente={porCliente}
             onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
-            onAbrirOperador={(operador) => drill.abrirLista({ ...filtroBase, operador }, operador, fetchDashboardChamados)}
+            onAbrirCliente={(cliente) => drill.abrirLista({ ...filtroBase, cliente }, cliente, fetchDashboardChamados)}
           />
 
           {drill.pilha !== null && (
