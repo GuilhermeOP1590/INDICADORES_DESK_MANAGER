@@ -696,16 +696,20 @@ indicadoresRouter.get("/configuracao/equipamentos/por-ic", async (req, res) => {
       res.status(400).json({ erro: "Período (dataInicio e dataFim) é obrigatório" });
       return;
     }
+    const { tipo } = req.query;
 
     const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
     const noPeriodo = filtrarPorData(excluirCancelados(chamados), periodo).filter((c) => c.especialidade === "Manutenção");
 
+    // Busca o histórico (Ics/horímetro/causa) sobre o período inteiro, não sobre o já filtrado por
+    // tipo, pra reaproveitar o mesmo cache de 15min usado por Orçamento e outras abas.
     const historicoMap = await obterHistoricoEmLote(noPeriodo);
-    const ics = buildPorIc(noPeriodo, historicoMap);
+    const filtrados = tipo ? noPeriodo.filter((c) => c.tipo === tipo) : noPeriodo;
+    const ics = buildPorIc(filtrados, historicoMap);
 
-    const totalComIc = noPeriodo.filter((c) => (historicoMap.get(c.Chave)?.ics?.length ?? 0) > 0).length;
+    const totalComIc = filtrados.filter((c) => (historicoMap.get(c.Chave)?.ics?.length ?? 0) > 0).length;
 
-    res.json({ ics, totalChamados: noPeriodo.length, totalComIc, totalSemIc: noPeriodo.length - totalComIc });
+    res.json({ ics, totalChamados: filtrados.length, totalComIc, totalSemIc: filtrados.length - totalComIc });
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });

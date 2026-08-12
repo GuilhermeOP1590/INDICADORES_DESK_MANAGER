@@ -7,10 +7,19 @@ import { RankingTable } from "../components/RankingTable.jsx";
 import { Modal } from "../components/Modal.jsx";
 import { DrillDownContent } from "../components/DrillDownContent.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
+import { SubTabs } from "../components/SubTabs.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
 import { periodoMesFiscal, formatBR } from "../lib/datas.js";
 
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Rotina não é manutenção de fato (inspeção/checklist programado), então não entra como opção de
+// filtro aqui — só Preventiva x Corretiva importam pra análise de custo/recorrência por equipamento.
+const TIPOS_FILTRO = [
+  { value: "", label: "Todos" },
+  { value: "Preventiva", label: "Preventiva" },
+  { value: "Corretiva", label: "Corretiva" },
+];
 
 // Modal de perfil de um Ic específico — mantém seu PRÓPRIO useDrillDown/Modal aninhado pra abrir
 // o detalhe de um chamado (mesmo padrão já usado em OperadoresTable.jsx), sem precisar estender
@@ -85,18 +94,24 @@ function PerfilIc({ ic, onClose }) {
 
 export default function EquipamentosPorIc() {
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
+  const [tipo, setTipo] = useState("");
   const [state, setState] = useState({ status: "idle", payload: null, error: null });
   const [icSelecionado, setIcSelecionado] = useState(null);
   const [graficoAberto, setGraficoAberto] = useState(false);
 
-  async function calcular() {
+  async function calcular(tipoAtivo = tipo) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchEquipamentosPorIc(periodo);
+      const payload = await fetchEquipamentosPorIc({ ...periodo, tipo: tipoAtivo });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
     }
+  }
+
+  function mudarTipo(novoTipo) {
+    setTipo(novoTipo);
+    if (state.payload) calcular(novoTipo);
   }
 
   const selecionarIc = (label, agregado, entry) => setIcSelecionado(entry);
@@ -112,10 +127,12 @@ export default function EquipamentosPorIc() {
           </p>
         </div>
         <DateFilterBar periodo={periodo} onChange={setPeriodo} />
-        <button className="refresh-btn" onClick={calcular} disabled={state.status === "loading"}>
+        <button className="refresh-btn" onClick={() => calcular()} disabled={state.status === "loading"}>
           {state.status === "loading" ? "Calculando..." : "Calcular"}
         </button>
       </div>
+
+      <SubTabs options={TIPOS_FILTRO} active={tipo} onChange={mudarTipo} />
 
       {state.status === "loading" && (
         <p className="subtitle">Buscando histórico de cada chamado do período — pode levar até 1 minuto...</p>
