@@ -52,6 +52,24 @@ function PerfilIc({ ic, onClose }) {
         <DonutChart data={donutData} height={200} />
       </div>
 
+      {ic.mttrHoras !== null ? (
+        <div className="panel">
+          <h2>Composição do MTTR</h2>
+          <DonutChart
+            data={[
+              { label: "Espera de peça", total: ic.mttrAguardandoPecaHoras },
+              { label: "Reparo", total: ic.mttrReparoHoras },
+            ]}
+            height={200}
+          />
+        </div>
+      ) : (
+        <div className="panel">
+          <h2>Composição do MTTR</h2>
+          <p className="subtitle">Poucos dados nesse período.</p>
+        </div>
+      )}
+
       <div className="panel full-width">
         <h2>Histórico</h2>
         <table>
