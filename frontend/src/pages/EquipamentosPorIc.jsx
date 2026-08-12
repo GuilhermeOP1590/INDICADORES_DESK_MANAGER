@@ -49,6 +49,7 @@ function PerfilIc({ ic, onClose }) {
               <th>Data</th>
               <th>Tipo</th>
               <th>Causa</th>
+              <th>Status</th>
               <th>Valor</th>
               <th>Horímetro</th>
             </tr>
@@ -64,6 +65,7 @@ function PerfilIc({ ic, onClose }) {
                 <td>{formatBR(c.dataCriacao)}</td>
                 <td>{c.tipo ?? "—"}</td>
                 <td>{c.causa ?? "—"}</td>
+                <td>{c.status ?? "—"}</td>
                 <td className="num">{c.valorAprovacao ? formatBRL(c.valorAprovacao) : "—"}</td>
                 <td className="num">{c.horimetro ?? "—"}</td>
               </tr>
@@ -123,10 +125,15 @@ export default function EquipamentosPorIc() {
 
       {state.payload && (
         <>
-          <div className="meta" style={{ marginBottom: 12 }}>
-            {state.payload.totalChamados} chamados de Manutenção no período — {state.payload.totalComIc} com Ic
-            identificado, {state.payload.totalSemIc} sem
-          </div>
+          <section className="stat-grid">
+            <StatTile
+              label="Custo total do período"
+              value={formatBRL(state.payload.ics.reduce((soma, ic) => soma + ic.custoTotal, 0))}
+            />
+            <StatTile label="Equipamentos com Ic identificado" value={state.payload.ics.length} />
+            <StatTile label="Chamados com Ic" value={state.payload.totalComIc} />
+            <StatTile label="Chamados sem Ic" value={state.payload.totalSemIc} />
+          </section>
 
           {state.payload.ics.length === 0 ? (
             <p className="subtitle">Nenhum chamado com Ic identificado nesse período.</p>
@@ -146,7 +153,8 @@ export default function EquipamentosPorIc() {
                   data={state.payload.ics.map((ic) => ({ ...ic, label: ic.ic }))}
                   limit={15}
                   agregarOutros={false}
-                  height={Math.min(state.payload.ics.length, 15) * 26 + 20}
+                  height={Math.min(state.payload.ics.length, 15) * 34 + 20}
+                  yAxisWidth={190}
                   onBarClick={selecionarIc}
                 />
               </div>
@@ -157,7 +165,8 @@ export default function EquipamentosPorIc() {
                     data={state.payload.ics.map((ic) => ({ ...ic, label: ic.ic }))}
                     limit={state.payload.ics.length}
                     agregarOutros={false}
-                    height={Math.max(320, state.payload.ics.length * 26)}
+                    height={Math.max(320, state.payload.ics.length * 40)}
+                    yAxisWidth={240}
                     onBarClick={selecionarIc}
                   />
                 </Modal>
@@ -171,6 +180,7 @@ export default function EquipamentosPorIc() {
                   onSelecionar={selecionarIc}
                   colunasExtras={[
                     { header: "Cliente", render: (d) => d.cliente ?? "—", valorBusca: (d) => d.cliente ?? "" },
+                    { header: "Custo total", render: (d) => formatBRL(d.custoTotal) },
                   ]}
                 />
               </div>

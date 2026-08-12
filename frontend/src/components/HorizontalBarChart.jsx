@@ -19,6 +19,7 @@ export function HorizontalBarChart({
   onBarClick,
   formatValue,
   agregarOutros = true,
+  yAxisWidth = 150,
 }) {
   const chartData = foldTop(data, limit, agregarOutros);
 
@@ -37,7 +38,7 @@ export function HorizontalBarChart({
         <YAxis
           type="category"
           dataKey="label"
-          width={150}
+          width={yAxisWidth}
           tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
           axisLine={{ stroke: "var(--baseline)" }}
           tickLine={false}

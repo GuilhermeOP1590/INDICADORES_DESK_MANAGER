@@ -20,6 +20,7 @@ export function buildPorIc(chamados, historicoMap) {
       valorAprovacao: historico?.valorAprovacao ?? null,
       horimetro: historico?.horimetro ?? null,
       cliente: chamado.cliente ?? null,
+      status: chamado.NomeStatus ?? null,
     };
 
     for (const ic of ics) {

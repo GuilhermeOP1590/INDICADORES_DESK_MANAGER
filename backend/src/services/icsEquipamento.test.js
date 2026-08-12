@@ -3,7 +3,15 @@ import assert from "node:assert/strict";
 import { buildPorIc } from "./icsEquipamento.js";
 
 function chamado(overrides) {
-  return { Chave: 1, CodChamado: "0000-000001", DataCriacao: "2026-08-01", tipo: "Preventiva", cliente: null, ...overrides };
+  return {
+    Chave: 1,
+    CodChamado: "0000-000001",
+    DataCriacao: "2026-08-01",
+    tipo: "Preventiva",
+    cliente: null,
+    NomeStatus: null,
+    ...overrides,
+  };
 }
 
 test("buildPorIc agrupa por Ic e conta total corretamente", () => {
@@ -98,6 +106,13 @@ test("buildPorIc retorna cliente null quando nenhum chamado tem cliente identifi
   const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
   const [resultado] = buildPorIc(chamados, historicoMap);
   assert.equal(resultado.cliente, null);
+});
+
+test("buildPorIc leva o status atual de cada chamado pro histórico do Ic", () => {
+  const chamados = [chamado({ Chave: 1, NomeStatus: "Aguardando Aprovação" })];
+  const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.chamados[0].status, "Aguardando Aprovação");
 });
 
 test("buildPorIc ordena por total desc", () => {
