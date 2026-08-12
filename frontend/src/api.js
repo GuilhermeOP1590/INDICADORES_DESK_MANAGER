@@ -127,3 +127,7 @@ export async function removerPrioridade(codChamado) {
 export function fetchEquipamentosPorIc(opts) {
   return getJson("/api/configuracao/equipamentos/por-ic", opts);
 }
+
+export function fetchTendenciaMensalManutencao(opts) {
+  return getJson("/api/manutencao/tendencia-mensal", opts);
+}

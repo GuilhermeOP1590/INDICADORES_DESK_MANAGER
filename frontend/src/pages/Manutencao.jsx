@@ -14,6 +14,7 @@ import { useDrillDown } from "../lib/useDrillDown.js";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { periodoMesFiscal } from "../lib/datas.js";
+import { TendenciaMensalManutencao } from "../components/TendenciaMensalManutencao.jsx";
 
 const GERAL = "__geral__";
 const TIPOS = ["Preventiva", "Corretiva", "Rotina", "Segurança", "Outros/Não classificado"];
@@ -189,6 +190,8 @@ export default function Manutencao() {
                   <OperadoresTable data={detalhe.operadores} filtroBase={filtroBase} />
                 </div>
               </section>
+
+              {tipoAtivo === GERAL && <TendenciaMensalManutencao />}
             </>
           )}
         </>
