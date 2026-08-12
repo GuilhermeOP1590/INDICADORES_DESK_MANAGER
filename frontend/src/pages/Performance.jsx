@@ -82,7 +82,7 @@ export default function Performance() {
 
   const volumeData = comOperador.map((op) => ({ label: op.operador, total: op.total }));
   const resolucaoData = [...comOperador]
-    .filter((op) => op.total >= 3)
+    .filter((op) => op.total >= 3 && op.percentualResolucao !== null)
     .sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))
     .map((op) => ({ label: op.operador, total: op.percentualResolucao }));
 

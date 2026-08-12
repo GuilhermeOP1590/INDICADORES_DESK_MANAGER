@@ -38,7 +38,7 @@ export function OperadoresTable({ data, filtroBase }) {
               <td className="num">{op.total}</td>
               <td className="num">{op.abertos}</td>
               <td className="num">{op.fechados}</td>
-              <td className="num">{op.percentualResolucao !== undefined ? `${op.percentualResolucao}%` : "—"}</td>
+              <td className="num">{Number.isFinite(op.percentualResolucao) ? `${op.percentualResolucao}%` : "—"}</td>
             </tr>
           ))}
         </tbody>

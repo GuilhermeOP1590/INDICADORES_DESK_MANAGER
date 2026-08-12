@@ -58,7 +58,7 @@ function listarOperadores(chamados) {
   return [...porOperador.values()]
     .map((op) => {
       const avaliados = op.concluidos + op.abertos;
-      return { ...op, percentualResolucao: avaliados ? Math.round((op.concluidos / avaliados) * 1000) / 10 : 100 };
+      return { ...op, percentualResolucao: avaliados ? Math.round((op.concluidos / avaliados) * 1000) / 10 : null };
     })
     .sort((a, b) => b.total - a.total);
 }
@@ -86,7 +86,7 @@ function listarPorUf(chamados) {
   return [...porUf.values()]
     .map((u) => {
       const avaliados = u.concluidos + u.abertos;
-      return { ...u, percentualResolucao: avaliados ? Math.round((u.concluidos / avaliados) * 1000) / 10 : 100 };
+      return { ...u, percentualResolucao: avaliados ? Math.round((u.concluidos / avaliados) * 1000) / 10 : null };
     })
     .sort((a, b) => b.total - a.total);
 }
@@ -114,7 +114,7 @@ function listarPorCliente(chamados) {
   return [...porCliente.values()]
     .map((c) => {
       const avaliados = c.concluidos + c.abertos;
-      return { ...c, percentualResolucao: avaliados ? Math.round((c.concluidos / avaliados) * 1000) / 10 : 100 };
+      return { ...c, percentualResolucao: avaliados ? Math.round((c.concluidos / avaliados) * 1000) / 10 : null };
     })
     .sort((a, b) => b.total - a.total);
 }

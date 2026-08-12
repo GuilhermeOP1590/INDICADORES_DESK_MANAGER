@@ -16,9 +16,9 @@ export function RegiaoPerformancePanel({ porUf, onSelecionarUf }) {
           <StatTile
             key={u.uf}
             label={u.uf}
-            value={`${u.percentualResolucao}%`}
+            value={Number.isFinite(u.percentualResolucao) ? `${u.percentualResolucao}%` : "—"}
             meta={`${u.concluidos} resolvidos · ${u.abertos} em aberto · ${u.total} total`}
-            statusClass={u.percentualResolucao >= 80 ? "status-good" : undefined}
+            statusClass={Number.isFinite(u.percentualResolucao) && u.percentualResolucao >= 80 ? "status-good" : undefined}
             onClick={onSelecionarUf ? () => onSelecionarUf(u.uf) : undefined}
           />
         ))}

@@ -12,7 +12,7 @@ export function ClientePerformancePanel({ porCliente, onAbrirGeral, onAbrirClien
   const percentualMedio = totalChamados ? Math.round((totalConcluidos / totalChamados) * 1000) / 10 : 0;
 
   const destaqueVolume = [...clientes].sort((a, b) => b.total - a.total)[0];
-  const comAmostra = clientes.filter((c) => c.total >= 3);
+  const comAmostra = clientes.filter((c) => c.total >= 3 && c.percentualResolucao !== null);
   const melhorResolucao = [...comAmostra].sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))[0];
   const piorResolucao = [...comAmostra].sort((a, b) => (a.percentualResolucao ?? 0) - (b.percentualResolucao ?? 0))[0];
 

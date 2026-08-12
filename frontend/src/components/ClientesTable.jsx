@@ -39,7 +39,7 @@ export function ClientesTable({ data, filtroBase }) {
               <td className="num">{c.total}</td>
               <td className="num">{c.abertos}</td>
               <td className="num">{c.fechados}</td>
-              <td className="num">{c.percentualResolucao !== undefined ? `${c.percentualResolucao}%` : "—"}</td>
+              <td className="num">{Number.isFinite(c.percentualResolucao) ? `${c.percentualResolucao}%` : "—"}</td>
             </tr>
           ))}
         </tbody>

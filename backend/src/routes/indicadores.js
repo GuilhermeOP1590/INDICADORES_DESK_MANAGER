@@ -375,7 +375,7 @@ indicadoresRouter.get("/clientes/resumo", async (req, res) => {
     const lista = [...porEspecialidade.values()]
       .map((e) => {
         const avaliados = e.concluidos + e.abertos;
-        return { ...e, percentualResolucao: avaliados ? Math.round((e.concluidos / avaliados) * 1000) / 10 : 100 };
+        return { ...e, percentualResolucao: avaliados ? Math.round((e.concluidos / avaliados) * 1000) / 10 : null };
       })
       .sort((a, b) => b.total - a.total);
 

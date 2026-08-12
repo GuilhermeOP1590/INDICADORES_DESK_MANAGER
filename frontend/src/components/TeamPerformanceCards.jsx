@@ -12,7 +12,7 @@ export function TeamPerformanceCards({ operadores, onAbrirGeral, onAbrirOperador
 
   const destaqueVolume = [...comOperador].sort((a, b) => b.total - a.total)[0];
   const destaqueResolucao = [...comOperador]
-    .filter((op) => op.total >= 3)
+    .filter((op) => op.total >= 3 && op.percentualResolucao !== null)
     .sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))[0];
 
   return (

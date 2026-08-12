@@ -50,7 +50,7 @@ export function ClienteResumoTable({ filtros, onSelecionarEspecialidade }) {
               <td className="num">{e.total}</td>
               <td className="num">{e.abertos}</td>
               <td className="num">{e.fechados}</td>
-              <td className="num">{e.percentualResolucao}%</td>
+              <td className="num">{Number.isFinite(e.percentualResolucao) ? `${e.percentualResolucao}%` : "—"}</td>
             </tr>
           ))}
         </tbody>

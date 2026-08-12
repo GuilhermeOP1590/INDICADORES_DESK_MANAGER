@@ -54,12 +54,16 @@ export default function Dashboard() {
 
   // % de resolução por cliente (só quem tem amostra mínima — senão 1 chamado fechado vira
   // "100%" e distorce o ranking) — quem está indo melhor/pior, não só quem tem mais volume.
+  // percentualResolucao null = cliente sem nenhum chamado concluído ou aberto (só "Aguardando
+  // Aprovação") — não dá pra ranquear como melhor nem pior sem nenhum dado avaliável.
   // Filtro de tipo (Preventiva/Corretiva/Rotina/Segurança) troca pra um recorte pré-calculado
   // no backend (porClientePorTipo) — só existe pra chamados de Manutenção.
   const porCliente = tipoCliente
     ? (state.payload?.indicadores.porClientePorTipo?.[tipoCliente] ?? [])
     : (state.payload?.indicadores.porCliente ?? []);
-  const clientesComAmostra = porCliente.filter((c) => c.cliente !== "Não informado" && c.total >= 3);
+  const clientesComAmostra = porCliente.filter(
+    (c) => c.cliente !== "Não informado" && c.total >= 3 && c.percentualResolucao !== null
+  );
   const melhorResolucaoClienteData = [...clientesComAmostra]
     .sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))
     .map((c) => ({ label: c.cliente, total: c.percentualResolucao }));
