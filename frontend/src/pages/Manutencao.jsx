@@ -5,6 +5,7 @@ import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { CausaPanel } from "../components/CausaPanel.jsx";
 import { OperadoresTable } from "../components/OperadoresTable.jsx";
+import EquipamentosPorIc from "./EquipamentosPorIc.jsx";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
 import { UfSelect } from "../components/UfSelect.jsx";
@@ -189,6 +190,8 @@ export default function Manutencao() {
                   <OperadoresTable data={detalhe.operadores} filtroBase={filtroBase} />
                 </div>
               </section>
+
+              {tipoAtivo === GERAL && <EquipamentosPorIc />}
             </>
           )}
         </>

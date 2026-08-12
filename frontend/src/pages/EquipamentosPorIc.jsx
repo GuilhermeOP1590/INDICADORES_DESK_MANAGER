@@ -84,6 +84,7 @@ export default function EquipamentosPorIc() {
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [state, setState] = useState({ status: "idle", payload: null, error: null });
   const [icSelecionado, setIcSelecionado] = useState(null);
+  const [graficoAberto, setGraficoAberto] = useState(false);
 
   async function calcular() {
     setState((s) => ({ ...s, status: "loading" }));
@@ -131,7 +132,15 @@ export default function EquipamentosPorIc() {
           ) : (
             <>
               <div className="panel full-width">
-                <h2>Top equipamentos por volume de chamados</h2>
+                <div className="panel-header-row">
+                  <div>
+                    <h2>Top equipamentos por volume de chamados</h2>
+                    <p className="subtitle">Clique numa barra pra abrir o perfil do equipamento</p>
+                  </div>
+                  <span className="expand-hint" onClick={() => setGraficoAberto(true)}>
+                    ⤢
+                  </span>
+                </div>
                 <HorizontalBarChart
                   data={state.payload.ics.map((ic) => ({ ...ic, label: ic.ic }))}
                   limit={15}
@@ -140,6 +149,18 @@ export default function EquipamentosPorIc() {
                   onBarClick={selecionarIc}
                 />
               </div>
+
+              {graficoAberto && (
+                <Modal title="Top equipamentos por volume de chamados" onClose={() => setGraficoAberto(false)}>
+                  <HorizontalBarChart
+                    data={state.payload.ics.map((ic) => ({ ...ic, label: ic.ic }))}
+                    limit={state.payload.ics.length}
+                    agregarOutros={false}
+                    height={Math.max(320, state.payload.ics.length * 26)}
+                    onBarClick={selecionarIc}
+                  />
+                </Modal>
+              )}
 
               <div className="panel full-width">
                 <h2>Todos os equipamentos ({state.payload.ics.length})</h2>
