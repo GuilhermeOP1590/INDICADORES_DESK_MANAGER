@@ -101,3 +101,25 @@ export async function salvarConfiguracaoEquipamentos(config) {
   if (!response.ok) throw new Error(data.erro || "Falha ao salvar configuração de equipamentos");
   return data;
 }
+
+export function fetchPrioritarios() {
+  return getJson("/api/prioritarios", {});
+}
+
+export async function adicionarPrioridade(codChamado, nota) {
+  const response = await fetch("/api/prioritarios", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ codChamado, nota }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao adicionar chamado prioritário");
+  return data;
+}
+
+export async function removerPrioridade(codChamado) {
+  const response = await fetch(`/api/prioritarios/${encodeURIComponent(codChamado)}`, { method: "DELETE" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao remover chamado prioritário");
+  return data;
+}
