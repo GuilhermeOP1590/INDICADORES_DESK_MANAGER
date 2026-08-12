@@ -22,6 +22,11 @@ const PADRAO = {
     "Aguardando Devolução",
     "Aguardando Fornecedor",
   ],
+  // Nomes de status cadastrados manualmente em Configurações > Status, antes de aparecerem em
+  // qualquer chamado carregado — só serve pra manter a linha visível/editável na tela com
+  // antecedência. Não é usado por classificarStatus (que já trata qualquer status desconhecido
+  // como "outro" por padrão); é puro metadado de exibição.
+  statusExtrasConhecidos: [],
 };
 
 export function lerConfiguracao() {
@@ -40,6 +45,7 @@ export function salvarConfiguracao(config) {
     statusConcluido: config.statusConcluido ?? PADRAO.statusConcluido,
     statusAguardandoAprovacao: config.statusAguardandoAprovacao ?? PADRAO.statusAguardandoAprovacao,
     statusAberto: config.statusAberto ?? PADRAO.statusAberto,
+    statusExtrasConhecidos: config.statusExtrasConhecidos ?? PADRAO.statusExtrasConhecidos,
   };
   writeFileSync(ARQUIVO, JSON.stringify(novaConfig, null, 2));
   return novaConfig;

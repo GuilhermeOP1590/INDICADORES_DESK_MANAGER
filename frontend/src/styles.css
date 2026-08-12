@@ -322,7 +322,7 @@ body {
 
 .config-status-row {
   display: grid;
-  grid-template-columns: 1fr 220px;
+  grid-template-columns: 1fr 220px auto;
   align-items: center;
   gap: 12px;
   padding: 8px 0;
