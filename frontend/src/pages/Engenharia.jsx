@@ -1,23 +1,36 @@
 import { useEffect, useState } from "react";
-import { fetchEngenharia } from "../api.js";
+import { fetchEngenharia, fetchEngenhariaCausas } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
+import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
+import { CausaPanel } from "../components/CausaPanel.jsx";
 import { OperadoresTable } from "../components/OperadoresTable.jsx";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
+import { UfSelect } from "../components/UfSelect.jsx";
+import { Modal } from "../components/Modal.jsx";
+import { DrillDownContent } from "../components/DrillDownContent.jsx";
+import { useDrillDown } from "../lib/useDrillDown.js";
+import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
 import { periodoMesFiscal } from "../lib/datas.js";
 
 const GERAL = "__geral__";
+const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Engenharia() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [tipoAtivo, setTipoAtivo] = useState(GERAL);
+  const [busca, setBusca] = useState("");
+  const [uf, setUf] = useState("");
+  const [detalhesAprovacao, setDetalhesAprovacao] = useState(null);
+  const drill = useDrillDown();
+  const ufsDisponiveis = useUfsDisponiveis();
 
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchEngenharia({ forceRefresh, ...periodo });
+      const payload = await fetchEngenharia({ forceRefresh, ...periodo, q: busca || undefined, uf: uf || undefined });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
@@ -26,8 +39,9 @@ export default function Engenharia() {
 
   useEffect(() => {
     load();
+    setDetalhesAprovacao(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo.dataInicio, periodo.dataFim]);
+  }, [periodo.dataInicio, periodo.dataFim, busca, uf]);
 
   const detalhe = tipoAtivo === GERAL ? state.payload?.geral : state.payload?.porAtividadeDetalhe?.[tipoAtivo];
 
@@ -35,6 +49,8 @@ export default function Engenharia() {
     especialidade: "Engenharia",
     ...(tipoAtivo === GERAL ? {} : { tipoAtividade: tipoAtivo }),
     ...periodo,
+    q: busca || undefined,
+    uf: uf || undefined,
   };
 
   return (
@@ -44,6 +60,17 @@ export default function Engenharia() {
         <button className="refresh-btn" onClick={() => load(true)} disabled={state.status === "loading"}>
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
+      </div>
+
+      <div className="filter-bar">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Buscar por assunto ou código do chamado..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+        <UfSelect value={uf} onChange={setUf} ufs={ufsDisponiveis} />
       </div>
 
       {state.status === "error" && <div className="state-banner error">Erro ao carregar indicadores de Engenharia: {state.error}</div>}
@@ -63,25 +90,57 @@ export default function Engenharia() {
             onChange={setTipoAtivo}
           />
 
-          {tipoAtivo === GERAL && (
-            <section className="panel-grid">
-              <MaximizableChart
-                title="Por tipo de atividade"
-                subtitle="Civil, Hidráulica, Elétrica, Telhado, Serralheria, Compras — clique numa barra"
-                data={state.payload.porTipoAtividade}
-                color="var(--series-2)"
-                limit={8}
-                filtroBase={{ especialidade: "Engenharia", ...periodo }}
-                dimensaoFiltro="tipoAtividade"
-              />
-            </section>
-          )}
-
           {detalhe && (
             <>
               <section className="stat-grid">
-                <StatTile label={`Chamados${tipoAtivo === GERAL ? "" : ` (${tipoAtivo})`}`} value={detalhe.total} />
+                <StatTile
+                  label={`Chamados${tipoAtivo === GERAL ? "" : ` (${tipoAtivo})`}`}
+                  value={detalhe.total}
+                  onClick={() => drill.abrirLista(filtroBase, `Chamados${tipoAtivo === GERAL ? "" : ` — ${tipoAtivo}`}`)}
+                />
+                <StatTile
+                  label="Aguardando Aprovação"
+                  value={detalhe.aguardandoAprovacao.aguardando}
+                  statusClass="status-warning"
+                  meta={tipoAtivo === GERAL && detalhesAprovacao ? formatBRL(detalhesAprovacao.valorAguardando) : undefined}
+                  onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "aguardando" }, "Aguardando Aprovação")}
+                />
+                {tipoAtivo === GERAL && detalhesAprovacao && (
+                  <StatTile
+                    label="Já avaliados"
+                    value={detalhesAprovacao.jaAvaliados}
+                    meta={formatBRL(detalhesAprovacao.valorAvaliado)}
+                    onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "avaliado" }, "Já avaliados")}
+                  />
+                )}
               </section>
+
+              <TeamPerformanceCards operadores={detalhe.operadores} />
+
+              {drill.pilha !== null && (
+                <Modal title={drill.topo?.titulo ?? ""} onClose={drill.fechar} onBack={drill.pilha.length > 1 ? drill.voltar : undefined}>
+                  <DrillDownContent topo={drill.topo} onAbrirChamado={drill.abrirChamado} onAbrirLista={drill.abrirListaEmpilhada} />
+                </Modal>
+              )}
+
+              {tipoAtivo === GERAL && (
+                <section className="panel-grid">
+                  <MaximizableChart
+                    title="Por tipo de atividade"
+                    subtitle="Civil, Hidráulica, Elétrica, Telhado, Serralheria, Compras — clique numa barra"
+                    data={state.payload.porTipoAtividade}
+                    color="var(--series-2)"
+                    limit={8}
+                    filtroBase={{ especialidade: "Engenharia", ...periodo, q: busca || undefined, uf: uf || undefined }}
+                    dimensaoFiltro="tipoAtividade"
+                  />
+                  <CausaPanel
+                    carregar={() => fetchEngenhariaCausas({ ...periodo, q: busca || undefined, uf: uf || undefined })}
+                    filtroBase={{ especialidade: "Engenharia", ...periodo, q: busca || undefined, uf: uf || undefined }}
+                    onCarregado={setDetalhesAprovacao}
+                  />
+                </section>
+              )}
 
               <section className="panel-grid">
                 <MaximizableChart
@@ -92,6 +151,7 @@ export default function Engenharia() {
                   limit={10}
                   filtroBase={filtroBase}
                   dimensaoFiltro="cliente"
+                  resumoPorCliente
                 />
 
                 <div className="panel full-width">

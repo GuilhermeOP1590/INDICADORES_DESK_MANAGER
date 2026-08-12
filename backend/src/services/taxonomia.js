@@ -2,15 +2,11 @@ const ESPECIALIDADES_EM_ESCOPO = new Set(["Manutenção", "Engenharia"]);
 
 const PREFIXO_PREVENTIVA = "Preventiva - ";
 const PREFIXO_ROTINA = "Rotinas - ";
+const PREFIXO_SEGURANCA = "Segurança - ";
 
-const NAO_EQUIPAMENTO = [
-  "Segurança - ",
-  "Sesmt - ",
-  "Transporte - ",
-  "Tranporte - ",
-  "TESTE-DUPLO",
-  "Outros",
-];
+// "Outros" (subcategoria exata) e "Segurança - " têm regra própria abaixo — não entram
+// mais nesse catch-all "Outros/Não classificado".
+const NAO_EQUIPAMENTO = ["Sesmt - ", "Transporte - ", "Tranporte - ", "TESTE-DUPLO"];
 
 function primeiroSegmento(categoria) {
   return categoria.split(" - ")[0].trim();
@@ -64,6 +60,15 @@ export function classificarChamado(chamado, subCategoriaIndex) {
       tipo: "Rotina",
       tipoAtividade: null,
       equipamento: nomeSub.slice(PREFIXO_ROTINA.length),
+    };
+  }
+
+  if (nomeSub.startsWith(PREFIXO_SEGURANCA)) {
+    return {
+      especialidade,
+      tipo: "Segurança",
+      tipoAtividade: null,
+      equipamento: nomeSub.slice(PREFIXO_SEGURANCA.length),
     };
   }
 

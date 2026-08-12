@@ -6,6 +6,14 @@ function campoRef(campo) {
   return campo?.[0]?.text ?? "—";
 }
 
+const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function parseValorBR(texto) {
+  if (!texto) return null;
+  const valor = Number.parseFloat(texto.replace(/\./g, "").replace(",", "."));
+  return Number.isNaN(valor) ? null : valor;
+}
+
 export function ChamadoDetalhe({ chave, codChamado }) {
   const [state, setState] = useState({ status: "loading", dados: null, error: null });
 
@@ -78,9 +86,17 @@ export function ChamadoDetalhe({ chave, codChamado }) {
               <span>{campoRef(interacao.Operador)}</span>
             </div>
             <div className="interacao-texto" dangerouslySetInnerHTML={{ __html: interacao.Descricao }} />
-            {interacao.NomeCausa && (
+            {(interacao.CodCausa?.[0]?.text || interacao.TotalHoras || interacao._8575) && (
               <div className="interacao-extra">
-                Causa: {interacao.NomeCausa} · Total de horas: {interacao.TotalHoras}
+                {interacao.CodCausa?.[0]?.text && <>Causa: {interacao.CodCausa[0].text} · </>}
+                Total de horas: {interacao.TotalHoras}
+                {interacao._8575 && (
+                  <>
+                    {" · "}
+                    <b>Valor (R$): {formatBRL(parseValorBR(interacao._8575))}</b>
+                    {interacao._9637 && ` (Orçamento/Custo: ${interacao._9637})`}
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSubCategoriaIndex } from "./subcategorias.js";
-import { buildClientePorUsuario } from "./usuarios.js";
+import { buildClientePorUsuario, buildCodigoClientePorUsuario } from "./usuarios.js";
 import { enriquecerChamados } from "./enriquecimento.js";
 
 const SUBCATEGORIA_INDEX = buildSubCategoriaIndex([
@@ -9,9 +9,9 @@ const SUBCATEGORIA_INDEX = buildSubCategoriaIndex([
   { Sequencia: "005759", SubCategoria: "Acessiilidade", Categoria: "Sesmt - Solicitações" },
 ]);
 
-const CLIENTE_POR_USUARIO = buildClientePorUsuario([
-  { Chave: 586, Cliente: "PORTO SEGURO" },
-]);
+const CLIENTE_POR_USUARIO = buildClientePorUsuario([{ Chave: 586, Cliente: "PORTO SEGURO", CodigoCliente: 36 }]);
+const CODIGO_CLIENTE_POR_USUARIO = buildCodigoClientePorUsuario([{ Chave: 586, CodigoCliente: 36 }]);
+const UF_POR_CODIGO_CLIENTE = new Map([[36, "BA"]]);
 
 test("enriquece chamado em escopo com taxonomia e cliente", () => {
   const chamados = [
@@ -21,6 +21,8 @@ test("enriquece chamado em escopo com taxonomia e cliente", () => {
   const resultado = enriquecerChamados(chamados, {
     subCategoriaIndex: SUBCATEGORIA_INDEX,
     clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
   });
 
   assert.equal(resultado.length, 1);
@@ -30,6 +32,7 @@ test("enriquece chamado em escopo com taxonomia e cliente", () => {
   assert.equal(resultado[0].tipo, "Corretiva");
   assert.equal(resultado[0].equipamento, "Bebedouro");
   assert.equal(resultado[0].cliente, "PORTO SEGURO");
+  assert.equal(resultado[0].uf, "BA");
 });
 
 test("descarta chamado fora de escopo (Sesmt)", () => {
@@ -38,6 +41,8 @@ test("descarta chamado fora de escopo (Sesmt)", () => {
   const resultado = enriquecerChamados(chamados, {
     subCategoriaIndex: SUBCATEGORIA_INDEX,
     clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
   });
 
   assert.equal(resultado.length, 0);
@@ -49,8 +54,11 @@ test("cliente fica null quando ChaveUsuario não está no mapa", () => {
   const resultado = enriquecerChamados(chamados, {
     subCategoriaIndex: SUBCATEGORIA_INDEX,
     clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
   });
 
   assert.equal(resultado.length, 1);
   assert.equal(resultado[0].cliente, null);
+  assert.equal(resultado[0].uf, null);
 });

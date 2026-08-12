@@ -13,3 +13,18 @@ export function filtrarPorData(chamados, { dataInicio, dataFim } = {}) {
     return true;
   });
 }
+
+export function filtrarPorUf(chamados, uf) {
+  if (!uf) return chamados;
+  return chamados.filter((chamado) => chamado.uf === uf);
+}
+
+export function buscarPorTexto(chamados, q) {
+  if (!q) return chamados;
+
+  const termo = q.toLowerCase();
+  return chamados.filter((chamado) => {
+    const campos = [chamado.Assunto, chamado.equipamento, chamado.CodChamado];
+    return campos.some((campo) => campo && campo.toLowerCase().includes(termo));
+  });
+}

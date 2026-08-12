@@ -1,18 +1,22 @@
 import { useEffect, useState } from "react";
-import { fetchIndicadores } from "../api.js";
+import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
+import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
 import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
 import { HorizontalBarChart } from "../components/HorizontalBarChart.jsx";
-import { OperadoresTable } from "../components/OperadoresTable.jsx";
+import { ChamadosPorAreaChart } from "../components/ChamadosPorAreaChart.jsx";
+import { RankedClientePanel } from "../components/RankedClientePanel.jsx";
+import { DonutChart } from "../components/DonutChart.jsx";
+import { CausaPanel } from "../components/CausaPanel.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
-import { periodoMesFiscal } from "../lib/datas.js";
+import { UfSelect } from "../components/UfSelect.jsx";
+import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
+import { periodoMesFiscal, formatHoras } from "../lib/datas.js";
+import { Modal } from "../components/Modal.jsx";
+import { DrillDownContent } from "../components/DrillDownContent.jsx";
+import { useDrillDown } from "../lib/useDrillDown.js";
 
-function formatHoras(horas) {
-  if (horas === null || horas === undefined) return "—";
-  if (horas < 1) return `${Math.round(horas * 60)} min`;
-  if (horas < 24) return `${horas.toFixed(1)} h`;
-  return `${(horas / 24).toFixed(1)} dias`;
-}
+const formatPct = (valor) => `${valor}%`;
 
 const GRANULARIDADES = [
   { key: "dia", label: "Dia" },
@@ -24,11 +28,16 @@ export default function Dashboard() {
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [granularidade, setGranularidade] = useState("dia");
+  const [busca, setBusca] = useState("");
+  const [uf, setUf] = useState("");
+  const [tipoCliente, setTipoCliente] = useState("");
+  const ufsDisponiveis = useUfsDisponiveis();
+  const drill = useDrillDown();
 
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchIndicadores({ forceRefresh, ...periodo });
+      const payload = await fetchIndicadores({ forceRefresh, ...periodo, q: busca || undefined, uf: uf || undefined });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
@@ -38,7 +47,25 @@ export default function Dashboard() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodo.dataInicio, periodo.dataFim]);
+  }, [periodo.dataInicio, periodo.dataFim, busca, uf]);
+
+  const filtroBase = { ...periodo, q: busca || undefined, uf: uf || undefined };
+  const tempoMedio = state.payload?.indicadores.sla.tempoMedioResolucaoHoras;
+
+  // % de resolução por cliente (só quem tem amostra mínima — senão 1 chamado fechado vira
+  // "100%" e distorce o ranking) — quem está indo melhor/pior, não só quem tem mais volume.
+  // Filtro de tipo (Preventiva/Corretiva/Rotina/Segurança) troca pra um recorte pré-calculado
+  // no backend (porClientePorTipo) — só existe pra chamados de Manutenção.
+  const porCliente = tipoCliente
+    ? (state.payload?.indicadores.porClientePorTipo?.[tipoCliente] ?? [])
+    : (state.payload?.indicadores.porCliente ?? []);
+  const clientesComAmostra = porCliente.filter((c) => c.cliente !== "Não informado" && c.total >= 3);
+  const melhorResolucaoClienteData = [...clientesComAmostra]
+    .sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))
+    .map((c) => ({ label: c.cliente, total: c.percentualResolucao }));
+  const piorResolucaoClienteData = [...clientesComAmostra]
+    .sort((a, b) => (a.percentualResolucao ?? 0) - (b.percentualResolucao ?? 0))
+    .map((c) => ({ label: c.cliente, total: c.percentualResolucao }));
 
   return (
     <div>
@@ -47,6 +74,17 @@ export default function Dashboard() {
         <button className="refresh-btn" onClick={() => load(true)} disabled={state.status === "loading"}>
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
+      </div>
+
+      <div className="filter-bar">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Buscar por assunto, equipamento ou código do chamado..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+        <UfSelect value={uf} onChange={setUf} ufs={ufsDisponiveis} />
       </div>
 
       {state.payload && (
@@ -68,11 +106,64 @@ export default function Dashboard() {
       {state.payload && (
         <>
           <section className="stat-grid">
-            <StatTile label="Total no período" value={state.payload.indicadores.volume.total} />
-            <StatTile label="Em aberto" value={state.payload.indicadores.volume.abertos} />
-            <StatTile label="Finalizados" value={state.payload.indicadores.volume.fechados} />
-            <StatTile label="Tempo médio de resolução" value={formatHoras(state.payload.indicadores.sla.tempoMedioResolucaoHoras)} />
+            <StatTile
+              label="Total no período"
+              value={state.payload.indicadores.volume.total}
+              onClick={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
+            />
+            <StatTile
+              label="Em aberto"
+              value={state.payload.indicadores.volume.abertos}
+              onClick={() => drill.abrirLista({ ...filtroBase, situacaoVolume: "aberto" }, "Em aberto", fetchDashboardChamados)}
+            />
+            <StatTile
+              label="Finalizados"
+              value={state.payload.indicadores.volume.fechados}
+              onClick={() =>
+                drill.abrirLista({ ...filtroBase, situacaoVolume: "finalizado" }, "Finalizados", fetchDashboardChamados)
+              }
+            />
+            <StatTile
+              label="Tempo médio de resolução"
+              value={formatHoras(tempoMedio)}
+              onClick={() =>
+                drill.abrirLista(
+                  { ...filtroBase, situacaoVolume: "finalizado" },
+                  `Tempo médio de resolução — ${formatHoras(tempoMedio)}`,
+                  fetchDashboardChamados
+                )
+              }
+            />
+            <StatTile
+              label="Backlog (antes do período)"
+              value={state.payload.backlog.total}
+              statusClass={state.payload.backlog.total > 0 ? "status-warning" : undefined}
+              meta="Criados antes do período e ainda em aberto"
+              onClick={() =>
+                drill.abrirResumoBacklog(
+                  state.payload.backlog,
+                  { uf: uf || undefined, q: busca || undefined, criadosAntes: periodo.dataInicio, situacaoVolume: "aberto" },
+                  "Backlog — criados antes do período"
+                )
+              }
+            />
           </section>
+
+          <TeamPerformanceCards
+            operadores={state.payload.indicadores.operadores}
+            onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
+            onAbrirOperador={(operador) => drill.abrirLista({ ...filtroBase, operador }, operador, fetchDashboardChamados)}
+          />
+
+          {drill.pilha !== null && (
+            <Modal title={drill.topo?.titulo ?? ""} onClose={drill.fechar} onBack={drill.pilha.length > 1 ? drill.voltar : undefined}>
+              <DrillDownContent
+                topo={drill.topo}
+                onAbrirChamado={drill.abrirChamado}
+                onAbrirLista={(filtros, titulo) => drill.abrirListaEmpilhada(filtros, titulo, fetchDashboardChamados)}
+              />
+            </Modal>
+          )}
 
           <section className="panel-grid">
             <div className="panel full-width">
@@ -97,34 +188,67 @@ export default function Dashboard() {
             </div>
 
             <div className="panel">
+              <h2>Aberto x Finalizado</h2>
+              <p className="subtitle">Proporção dos chamados do período</p>
+              <DonutChart
+                data={[
+                  { label: "Em aberto", total: state.payload.indicadores.volume.abertos },
+                  { label: "Finalizados", total: state.payload.indicadores.volume.fechados },
+                ]}
+                height={220}
+              />
+            </div>
+
+            <div className="panel">
               <h2>Chamados por status</h2>
               <p className="subtitle">Distribuição atual por situação</p>
               <HorizontalBarChart data={state.payload.indicadores.volume.porStatus} color="var(--series-1)" />
             </div>
 
             <div className="panel">
-              <h2>Chamados por prioridade</h2>
-              <p className="subtitle">Distribuição por nível de prioridade</p>
-              <HorizontalBarChart data={state.payload.indicadores.categorias.porPrioridade} color="var(--series-2)" />
+              <h2>Chamados por área</h2>
+              <p className="subtitle">Engenharia x Manutenção x outras áreas — clique numa barra</p>
+              <ChamadosPorAreaChart
+                data={state.payload.indicadores.areas}
+                onBarClick={(area) => drill.abrirLista({ ...filtroBase, area }, area, fetchDashboardChamados)}
+              />
             </div>
 
-            <div className="panel">
-              <h2>Chamados por grupo/categoria</h2>
-              <p className="subtitle">Top categorias por volume</p>
-              <HorizontalBarChart data={state.payload.indicadores.categorias.porGrupo} color="var(--series-3)" limit={8} />
-            </div>
+            <CausaPanel carregar={() => fetchIndicadoresCausas(filtroBase)} filtroBase={filtroBase} />
 
-            <div className="panel">
-              <h2>Chamados por tipo</h2>
-              <p className="subtitle">Distribuição por tipo de atendimento</p>
-              <HorizontalBarChart data={state.payload.indicadores.categorias.porTipo} color="var(--series-4)" />
-            </div>
+            <RankedClientePanel
+              title="Clientes com melhor % de resolução"
+              subtitle={
+                tipoCliente
+                  ? `Top 10 — só ${tipoCliente} (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`
+                  : "Top 10 no período (mínimo 3 chamados) — clique pra ver todos em % e abrir os chamados"
+              }
+              data={melhorResolucaoClienteData}
+              color="var(--status-good)"
+              filtroBase={{ ...filtroBase, tipo: tipoCliente || undefined }}
+              formatValue={formatPct}
+              ordemInicial="desc"
+              fetcher={fetchDashboardChamados}
+              tipoFiltro={tipoCliente}
+              onTipoFiltroChange={setTipoCliente}
+            />
 
-            <div className="panel full-width">
-              <h2>Chamados por operador</h2>
-              <p className="subtitle">Todos os operadores com chamados no período</p>
-              <OperadoresTable data={state.payload.indicadores.operadores} />
-            </div>
+            <RankedClientePanel
+              title="Clientes com pior % de resolução"
+              subtitle={
+                tipoCliente
+                  ? `Top 10 — só ${tipoCliente} (mínimo 3 chamados) — clique pra ver todos e abrir os chamados`
+                  : "Top 10 no período (mínimo 3 chamados) — clique pra ver todos em % e abrir os chamados"
+              }
+              data={piorResolucaoClienteData}
+              color="var(--status-critical)"
+              filtroBase={{ ...filtroBase, tipo: tipoCliente || undefined }}
+              formatValue={formatPct}
+              ordemInicial="asc"
+              fetcher={fetchDashboardChamados}
+              tipoFiltro={tipoCliente}
+              onTipoFiltroChange={setTipoCliente}
+            />
           </section>
         </>
       )}

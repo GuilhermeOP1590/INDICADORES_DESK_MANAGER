@@ -4,3 +4,4 @@ dist/
 build/
 .superpowers/
 .claude/
+backend/data/

@@ -4,7 +4,8 @@ import { SortableTh } from "./SortableTh.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
 import { useSort } from "../lib/useSort.js";
 
-export function OperadoresTable({ data, filtroBase }) {
+// Espelha OperadoresTable — mesmo racional, só que ranqueando cliente em vez de operador.
+export function ClientesTable({ data, filtroBase }) {
   const drill = useDrillDown();
   const { sorted, sortKey, sortDir, toggleSort } = useSort(data, "total", "desc");
 
@@ -13,7 +14,7 @@ export function OperadoresTable({ data, filtroBase }) {
       <table>
         <thead>
           <tr>
-            <SortableTh label="Operador" sortKeyName="operador" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+            <SortableTh label="Cliente" sortKeyName="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
             <SortableTh label="Total" sortKeyName="total" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="num" />
             <SortableTh label="Abertos" sortKeyName="abertos" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="num" />
             <SortableTh label="Fechados" sortKeyName="fechados" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="num" />
@@ -28,17 +29,17 @@ export function OperadoresTable({ data, filtroBase }) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((op) => (
+          {sorted.map((c) => (
             <tr
-              key={op.operador}
+              key={c.cliente}
               className={filtroBase ? "clickable-row" : ""}
-              onClick={filtroBase ? () => drill.abrirLista({ ...filtroBase, operador: op.operador }, op.operador) : undefined}
+              onClick={filtroBase ? () => drill.abrirLista({ ...filtroBase, cliente: c.cliente }, c.cliente) : undefined}
             >
-              <td>{op.operador}</td>
-              <td className="num">{op.total}</td>
-              <td className="num">{op.abertos}</td>
-              <td className="num">{op.fechados}</td>
-              <td className="num">{op.percentualResolucao !== undefined ? `${op.percentualResolucao}%` : "—"}</td>
+              <td>{c.cliente}</td>
+              <td className="num">{c.total}</td>
+              <td className="num">{c.abertos}</td>
+              <td className="num">{c.fechados}</td>
+              <td className="num">{c.percentualResolucao !== undefined ? `${c.percentualResolucao}%` : "—"}</td>
             </tr>
           ))}
         </tbody>

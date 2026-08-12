@@ -12,6 +12,13 @@ export function formatBR(iso) {
   return `${dia}/${mes}/${ano}`;
 }
 
+export function formatHoras(horas) {
+  if (horas === null || horas === undefined) return "—";
+  if (horas < 1) return `${Math.round(horas * 60)} min`;
+  if (horas < 24) return `${horas.toFixed(1)} h`;
+  return `${(horas / 24).toFixed(1)} dias`;
+}
+
 export function periodoHoje() {
   const iso = formatISO(new Date());
   return { dataInicio: iso, dataFim: iso };
@@ -61,6 +68,37 @@ export function periodoMesFiscal() {
   return { dataInicio: formatISO(inicio), dataFim: formatISO(fim) };
 }
 
+// Desloca um período em N meses (negativo = passado) — usado pra sugerir "mês anterior"
+// como período de comparação, mantendo o mesmo tamanho de janela.
+export function deslocarMeses(periodo, meses) {
+  function deslocar(iso) {
+    const [ano, mes, dia] = iso.split("-").map(Number);
+    return formatISO(new Date(ano, mes - 1 + meses, dia));
+  }
+  return { dataInicio: deslocar(periodo.dataInicio), dataFim: deslocar(periodo.dataFim) };
+}
+
+const MESES_ABREV = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+// Nomeia o mês fiscal (26 a 25) pelo mês em que ele TERMINA — é o mês que o usuário reconhece
+// como "o mês de agosto", mesmo o ciclo começando em 26/07.
+export function nomeMesFiscal(periodo) {
+  const [ano, mes] = periodo.dataFim.split("-").map(Number);
+  return `${MESES_ABREV[mes - 1]}/${String(ano).slice(2)}`;
+}
+
+// Lista os últimos `qtd` meses fiscais (mais recente primeiro) — pra navegar direto por nome
+// em vez de calcular datas manualmente.
+export function listaMesesFiscais(qtd = 15) {
+  const atual = periodoMesFiscal();
+  const lista = [];
+  for (let i = 0; i < qtd; i++) {
+    const periodo = deslocarMeses(atual, -i);
+    lista.push({ ...periodo, label: nomeMesFiscal(periodo) });
+  }
+  return lista;
+}
+
 function inicioDaSemana(iso) {
   const [ano, mes, dia] = iso.split("-").map(Number);
   const data = new Date(ano, mes - 1, dia);
@@ -75,7 +113,7 @@ function mesDoISO(iso) {
   return `${ano}-${mes}`;
 }
 
-// Agrupa uma série diária [{label: "AAAA-MM-DD", total}] em semana ou mês.
+// Agrupa uma série diária [{label: "AAAA-MM-DD", total, fechados, abertos}] em semana ou mês.
 export function agruparSerie(serieDiaria, granularidade) {
   if (granularidade === "dia") return serieDiaria;
 
@@ -84,10 +122,14 @@ export function agruparSerie(serieDiaria, granularidade) {
 
   for (const ponto of serieDiaria) {
     const chave = chaveFn(ponto.label);
-    somaPorChave.set(chave, (somaPorChave.get(chave) || 0) + ponto.total);
+    const atual = somaPorChave.get(chave) || { total: 0, fechados: 0, abertos: 0 };
+    atual.total += ponto.total;
+    atual.fechados += ponto.fechados ?? 0;
+    atual.abertos += ponto.abertos ?? 0;
+    somaPorChave.set(chave, atual);
   }
 
   return [...somaPorChave.entries()]
-    .map(([label, total]) => ({ label, total }))
+    .map(([label, soma]) => ({ label, ...soma }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }

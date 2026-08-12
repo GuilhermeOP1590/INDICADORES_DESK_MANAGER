@@ -10,6 +10,7 @@ const SUBCATEGORIAS_REAIS = [
   { Sequencia: "005743", SubCategoria: "Sesmt - Documentação", Categoria: "Manutenção - Equipamentos" },
   { Sequencia: "005646", SubCategoria: "TESTE-DUPLO", Categoria: "Manutenção - Equipamentos" },
   { Sequencia: "005901", SubCategoria: "Outros", Categoria: "Manutenção - Equipamentos" },
+  { Sequencia: "005902", SubCategoria: "Segurança - Bases dos porta palets", Categoria: "Manutenção - Equipamentos" },
   { Sequencia: "005907", SubCategoria: "Demandas - Administrativas", Categoria: "Manutenção - Rotinas" },
   { Sequencia: "005529", SubCategoria: "Disjuntor desarmando", Categoria: "Engenharia - Elétrica" },
   { Sequencia: "005759", SubCategoria: "Acessiilidade", Categoria: "Sesmt - Solicitações" },
@@ -68,9 +69,20 @@ test('"TESTE-DUPLO" cai em Outros/Não classificado', () => {
   assert.equal(resultado.tipo, "Outros/Não classificado");
 });
 
-test('"Outros" cai em Outros/Não classificado', () => {
+test('"Outros" é tipo Corretiva (equipamento "Outros")', () => {
   const resultado = classificarChamado({ SequenciaSubCategoria: "005901" }, INDEX);
-  assert.equal(resultado.tipo, "Outros/Não classificado");
+  assert.equal(resultado.tipo, "Corretiva");
+  assert.equal(resultado.equipamento, "Outros");
+});
+
+test('prefixo "Segurança - " vira tipo Segurança e extrai o equipamento', () => {
+  const resultado = classificarChamado({ SequenciaSubCategoria: "005902" }, INDEX);
+  assert.deepEqual(resultado, {
+    especialidade: "Manutenção",
+    tipo: "Segurança",
+    tipoAtividade: null,
+    equipamento: "Bases dos porta palets",
+  });
 });
 
 test("Engenharia usa a Categoria como tipoAtividade, tipo sempre Corretiva", () => {
