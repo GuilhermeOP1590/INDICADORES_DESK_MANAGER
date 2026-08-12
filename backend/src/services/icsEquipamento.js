@@ -42,6 +42,7 @@ export function buildPorIc(chamados, historicoMap) {
       const preventiva = ordenados.filter((c) => c.tipo === "Preventiva").length;
       const corretiva = ordenados.filter((c) => c.tipo === "Corretiva").length;
       const custoTotal = Math.round(ordenados.reduce((soma, c) => soma + (c.valorAprovacao ?? 0), 0) * 100) / 100;
+      const decomposicaoMttr = calcularDecomposicaoMttr(ordenados.filter((c) => c.tipo === "Corretiva"));
 
       return {
         ic,
@@ -52,7 +53,9 @@ export function buildPorIc(chamados, historicoMap) {
         custoTotal,
         recorrenciaDias: calcularRecorrenciaDias(ordenados.map((c) => c.dataCriacao).filter(Boolean)),
         mttfHoras: calcularMttfHoras(ordenados.filter((c) => c.tipo === "Corretiva")),
-        mttrHoras: calcularMttrHoras(ordenados.filter((c) => c.tipo === "Corretiva")),
+        mttrHoras: decomposicaoMttr?.mttrHoras ?? null,
+        mttrAguardandoPecaHoras: decomposicaoMttr?.mttrAguardandoPecaHoras ?? null,
+        mttrReparoHoras: decomposicaoMttr?.mttrReparoHoras ?? null,
         tempoAguardandoPecaDiasTotal:
           Math.round(ordenados.reduce((soma, c) => soma + (c.tempoAguardandoPecaDias ?? 0), 0) * 10) / 10,
         chamados: ordenados,
@@ -99,20 +102,32 @@ function calcularMttfHoras(corretivas) {
 }
 
 // Não desconta tempo em "Aguardando Aprovação" — abertura→finalização direto, mesmo padrão de
-// tempoResolucaoHoras usado no resto do backend.
-function calcularMttrHoras(corretivas) {
-  const duracoes = [];
+// tempoResolucaoHoras usado no resto do backend. Além do total (mttrHoras, igual antes),
+// decompõe em espera de peça x reparo de fato, usando o tempoAguardandoPecaDias que cada
+// `linha` já carrega desde a feature de MTTF/MTTR.
+function calcularDecomposicaoMttr(corretivas) {
+  const partes = [];
   for (const c of corretivas) {
     if (!c.dataFinalizacao || c.dataFinalizacao === "0000-00-00") continue;
     const inicio = parseDateTime(c.dataCriacao, c.horaCriacao);
     const fim = parseDateTime(c.dataFinalizacao, c.horaFinalizacao);
     if (!inicio || !fim) continue;
-    const horas = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
-    if (horas >= 0) duracoes.push(horas);
+    const totalHoras = (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60);
+    if (totalHoras < 0) continue;
+    // min() protege contra tempoAguardandoPecaDias maior que o total do chamado (inconsistência
+    // de dados) gerar reparoHoras negativo.
+    const esperaPecaHoras = Math.min((c.tempoAguardandoPecaDias ?? 0) * 24, totalHoras);
+    partes.push({ totalHoras, esperaPecaHoras, reparoHoras: totalHoras - esperaPecaHoras });
   }
 
-  if (duracoes.length === 0) return null;
-  return Math.round((duracoes.reduce((soma, h) => soma + h, 0) / duracoes.length) * 10) / 10;
+  if (partes.length === 0) return null;
+
+  const media = (campo) => Math.round((partes.reduce((soma, p) => soma + p[campo], 0) / partes.length) * 10) / 10;
+  return {
+    mttrHoras: media("totalHoras"),
+    mttrAguardandoPecaHoras: media("esperaPecaHoras"),
+    mttrReparoHoras: media("reparoHoras"),
+  };
 }
 
 function calcularRecorrenciaDias(datasOrdenadasIso) {

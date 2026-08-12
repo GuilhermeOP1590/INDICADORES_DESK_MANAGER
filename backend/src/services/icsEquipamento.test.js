@@ -200,6 +200,8 @@ test("buildPorIc ignora Corretiva não finalizada no cálculo de mttrHoras", () 
   const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
   const [resultado] = buildPorIc(chamados, historicoMap);
   assert.equal(resultado.mttrHoras, null);
+  assert.equal(resultado.mttrAguardandoPecaHoras, null);
+  assert.equal(resultado.mttrReparoHoras, null);
 });
 
 test("buildPorIc retorna mttrHoras null sem nenhuma Corretiva finalizada", () => {
@@ -207,6 +209,51 @@ test("buildPorIc retorna mttrHoras null sem nenhuma Corretiva finalizada", () =>
   const historicoMap = new Map([[1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null }]]);
   const [resultado] = buildPorIc(chamados, historicoMap);
   assert.equal(resultado.mttrHoras, null);
+  assert.equal(resultado.mttrAguardandoPecaHoras, null);
+  assert.equal(resultado.mttrReparoHoras, null);
+});
+
+test("buildPorIc decompõe mttrHoras em espera de peça x reparo", () => {
+  const chamados = [
+    chamado({
+      Chave: 1,
+      tipo: "Corretiva",
+      DataCriacao: "2026-08-01",
+      HoraCriacao: "08:00:00",
+      DataFinalizacao: "2026-08-03",
+      HoraFinalizacao: "08:00:00",
+    }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null, tempoAguardandoPecaDias: 1 }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  // total: 48h (2 dias). 1 dia (24h) esperando peça, 24h de reparo.
+  assert.equal(resultado.mttrHoras, 48);
+  assert.equal(resultado.mttrAguardandoPecaHoras, 24);
+  assert.equal(resultado.mttrReparoHoras, 24);
+});
+
+test("buildPorIc limita mttrAguardandoPecaHoras ao total do chamado (proteção contra inconsistência)", () => {
+  const chamados = [
+    chamado({
+      Chave: 1,
+      tipo: "Corretiva",
+      DataCriacao: "2026-08-01",
+      HoraCriacao: "08:00:00",
+      DataFinalizacao: "2026-08-01",
+      HoraFinalizacao: "12:00:00",
+    }),
+  ];
+  const historicoMap = new Map([
+    // tempoAguardandoPecaDias (10 dias = 240h) muito maior que o total do chamado (4h) — dado
+    // inconsistente, mas não pode gerar reparoHoras negativo.
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: null, tempoAguardandoPecaDias: 10 }],
+  ]);
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.mttrHoras, 4);
+  assert.equal(resultado.mttrAguardandoPecaHoras, 4);
+  assert.equal(resultado.mttrReparoHoras, 0);
 });
 
 test("buildPorIc soma tempoAguardandoPecaDiasTotal entre chamados de tipos diferentes", () => {
