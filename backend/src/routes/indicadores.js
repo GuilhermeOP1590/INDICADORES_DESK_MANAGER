@@ -524,9 +524,9 @@ indicadoresRouter.get("/configuracao/status", async (req, res) => {
   }
 });
 
-indicadoresRouter.put("/configuracao/status", (req, res) => {
+indicadoresRouter.put("/configuracao/status", async (req, res) => {
   try {
-    const config = salvarConfiguracao(req.body);
+    const config = await salvarConfiguracao(req.body);
     res.json({ config });
   } catch (error) {
     console.error(error);
@@ -557,9 +557,9 @@ indicadoresRouter.get("/configuracao/equipamentos", async (req, res) => {
   }
 });
 
-indicadoresRouter.put("/configuracao/equipamentos", (req, res) => {
+indicadoresRouter.put("/configuracao/equipamentos", async (req, res) => {
   try {
-    const config = salvarConfiguracaoEquipamentos(req.body);
+    const config = await salvarConfiguracaoEquipamentos(req.body);
     res.json({ config });
   } catch (error) {
     console.error(error);
@@ -672,7 +672,7 @@ indicadoresRouter.post("/prioritarios", async (req, res) => {
       return;
     }
 
-    adicionarOuAtualizarPrioridade(codChamado, nota ?? "");
+    await adicionarOuAtualizarPrioridade(codChamado, nota ?? "");
     res.json(await buildPrioritarios({}));
   } catch (error) {
     console.error(error);
@@ -682,7 +682,7 @@ indicadoresRouter.post("/prioritarios", async (req, res) => {
 
 indicadoresRouter.delete("/prioritarios/:codChamado", async (req, res) => {
   try {
-    removerPrioridade(req.params.codChamado);
+    await removerPrioridade(req.params.codChamado);
     res.json(await buildPrioritarios({}));
   } catch (error) {
     console.error(error);

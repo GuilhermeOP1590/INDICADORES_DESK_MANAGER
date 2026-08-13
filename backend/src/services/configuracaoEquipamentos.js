@@ -1,8 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import path from "path";
+import { getSupabaseClient } from "./supabaseClient.js";
 
-const PASTA_DADOS = path.join(process.cwd(), "data");
-const ARQUIVO = path.join(PASTA_DADOS, "configuracao-equipamentos.json");
+const CHAVE = "configuracao-equipamentos";
 
 // Semente construída em 2026-08-12 revisando a distribuição real dos 89 valores de
 // `equipamento` observados no período completo (ver
@@ -101,23 +99,39 @@ const PADRAO = {
   },
 };
 
-export function lerConfiguracaoEquipamentos() {
-  if (!existsSync(ARQUIVO)) return PADRAO;
-  try {
-    const salvo = JSON.parse(readFileSync(ARQUIVO, "utf-8"));
-    return { ...PADRAO, ...salvo };
-  } catch {
-    return PADRAO;
-  }
+// Cache em memória populado por inicializar() na subida do servidor. Leitura fica síncrona
+// (usada inclusive como valor default de parâmetro em outros módulos), então não pode
+// depender de round-trip de rede a cada chamada — ver contexto da task no PR.
+let cacheConfig = null;
+
+export async function inicializar() {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from("app_config").select("payload").eq("key", CHAVE).maybeSingle();
+
+  if (error) throw error;
+
+  cacheConfig = data?.payload ? { ...PADRAO, ...data.payload } : PADRAO;
+  return cacheConfig;
 }
 
-export function salvarConfiguracaoEquipamentos(config) {
-  if (!existsSync(PASTA_DADOS)) mkdirSync(PASTA_DADOS, { recursive: true });
+export function lerConfiguracaoEquipamentos() {
+  return cacheConfig ?? PADRAO;
+}
+
+export async function salvarConfiguracaoEquipamentos(config) {
   const novaConfig = {
     grupos: config.grupos ?? PADRAO.grupos,
     atribuicoes: config.atribuicoes ?? PADRAO.atribuicoes,
   };
-  writeFileSync(ARQUIVO, JSON.stringify(novaConfig, null, 2));
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("app_config")
+    .upsert({ key: CHAVE, payload: novaConfig, updated_at: new Date().toISOString() });
+
+  if (error) throw error;
+
+  cacheConfig = novaConfig;
   return novaConfig;
 }
 

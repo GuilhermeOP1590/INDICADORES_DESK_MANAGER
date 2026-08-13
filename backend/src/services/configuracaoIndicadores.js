@@ -1,8 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import path from "path";
+import { getSupabaseClient } from "./supabaseClient.js";
 
-const PASTA_DADOS = path.join(process.cwd(), "data");
-const ARQUIVO = path.join(PASTA_DADOS, "configuracao-indicadores.json");
+const CHAVE = "configuracao-indicadores";
 
 // Derivado da distribuição real de status observada em 2026-08-11 (ver Obsidian).
 // "Aguardando Aprovação" fica fora de aberto/concluído de propósito — não pode contar negativamente
@@ -29,25 +27,41 @@ const PADRAO = {
   statusExtrasConhecidos: [],
 };
 
-export function lerConfiguracao() {
-  if (!existsSync(ARQUIVO)) return PADRAO;
-  try {
-    const salvo = JSON.parse(readFileSync(ARQUIVO, "utf-8"));
-    return { ...PADRAO, ...salvo };
-  } catch {
-    return PADRAO;
-  }
+// Cache em memória populado por inicializar() na subida do servidor. Leitura fica síncrona
+// (usada inclusive como valor default de parâmetro em outros módulos), então não pode
+// depender de round-trip de rede a cada chamada — ver contexto da task no PR.
+let cacheConfig = null;
+
+export async function inicializar() {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from("app_config").select("payload").eq("key", CHAVE).maybeSingle();
+
+  if (error) throw error;
+
+  cacheConfig = data?.payload ? { ...PADRAO, ...data.payload } : PADRAO;
+  return cacheConfig;
 }
 
-export function salvarConfiguracao(config) {
-  if (!existsSync(PASTA_DADOS)) mkdirSync(PASTA_DADOS, { recursive: true });
+export function lerConfiguracao() {
+  return cacheConfig ?? PADRAO;
+}
+
+export async function salvarConfiguracao(config) {
   const novaConfig = {
     statusConcluido: config.statusConcluido ?? PADRAO.statusConcluido,
     statusAguardandoAprovacao: config.statusAguardandoAprovacao ?? PADRAO.statusAguardandoAprovacao,
     statusAberto: config.statusAberto ?? PADRAO.statusAberto,
     statusExtrasConhecidos: config.statusExtrasConhecidos ?? PADRAO.statusExtrasConhecidos,
   };
-  writeFileSync(ARQUIVO, JSON.stringify(novaConfig, null, 2));
+
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("app_config")
+    .upsert({ key: CHAVE, payload: novaConfig, updated_at: new Date().toISOString() });
+
+  if (error) throw error;
+
+  cacheConfig = novaConfig;
   return novaConfig;
 }
 

@@ -1,24 +1,37 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import path from "path";
+import { getSupabaseClient } from "./supabaseClient.js";
 
-const PASTA_DADOS = path.join(process.cwd(), "data");
-const ARQUIVO = path.join(PASTA_DADOS, "chamados-prioritarios.json");
+const CHAVE = "chamados-prioritarios";
 
 const PADRAO = { chamados: [] };
 
-export function lerPrioridades() {
-  if (!existsSync(ARQUIVO)) return PADRAO;
-  try {
-    const salvo = JSON.parse(readFileSync(ARQUIVO, "utf-8"));
-    return { chamados: salvo.chamados ?? [] };
-  } catch {
-    return PADRAO;
-  }
+// Cache em memória populado por inicializar() na subida do servidor. Leitura fica síncrona
+// (usada inclusive como valor default de parâmetro em outros módulos), então não pode
+// depender de round-trip de rede a cada chamada — ver contexto da task no PR.
+let cacheConfig = null;
+
+export async function inicializar() {
+  const supabase = getSupabaseClient();
+  const { data, error } = await supabase.from("app_config").select("payload").eq("key", CHAVE).maybeSingle();
+
+  if (error) throw error;
+
+  cacheConfig = data?.payload ?? PADRAO;
+  return cacheConfig;
 }
 
-export function salvarPrioridades(config) {
-  if (!existsSync(PASTA_DADOS)) mkdirSync(PASTA_DADOS, { recursive: true });
-  writeFileSync(ARQUIVO, JSON.stringify(config, null, 2));
+export function lerPrioridades() {
+  return cacheConfig ?? PADRAO;
+}
+
+export async function salvarPrioridades(config) {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase
+    .from("app_config")
+    .upsert({ key: CHAVE, payload: config, updated_at: new Date().toISOString() });
+
+  if (error) throw error;
+
+  cacheConfig = config;
   return config;
 }
 
@@ -44,10 +57,10 @@ export function aplicarRemocao(config, codChamado) {
   return { chamados: config.chamados.filter((c) => c.codChamado !== codChamado.trim()) };
 }
 
-export function adicionarOuAtualizarPrioridade(codChamado, nota) {
+export async function adicionarOuAtualizarPrioridade(codChamado, nota) {
   return salvarPrioridades(aplicarUpsert(lerPrioridades(), codChamado, nota));
 }
 
-export function removerPrioridade(codChamado) {
+export async function removerPrioridade(codChamado) {
   return salvarPrioridades(aplicarRemocao(lerPrioridades(), codChamado));
 }
