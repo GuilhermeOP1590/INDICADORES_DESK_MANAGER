@@ -1,4 +1,5 @@
 import { classificarStatus, lerConfiguracao } from "./configuracaoIndicadores.js";
+import { buildPorNivel } from "./slaNivel.js";
 
 export function isFinalizado(chamado) {
   return Boolean(chamado.DataFinalizacao) && chamado.DataFinalizacao !== "0000-00-00";
@@ -153,7 +154,7 @@ function buildPorUf(chamados) {
     .sort((a, b) => b.total - a.total);
 }
 
-function buildPorCliente(chamados) {
+export function buildPorCliente(chamados) {
   const config = lerConfiguracao();
   const porCliente = new Map();
 
@@ -232,6 +233,7 @@ function buildIndicadoresCore(chamados) {
     categorias: buildCategorias(chamados),
     porUf: buildPorUf(chamados),
     porCliente: buildPorCliente(chamados),
+    porNivel: buildPorNivel(chamados),
     areas: buildAreas(chamados),
   };
 }

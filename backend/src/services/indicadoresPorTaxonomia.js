@@ -1,5 +1,6 @@
 import { classificarStatus, lerConfiguracao } from "./configuracaoIndicadores.js";
 import { grupoDoEquipamento, lerConfiguracaoEquipamentos } from "./configuracaoEquipamentos.js";
+import { buildPorNivel } from "./slaNivel.js";
 
 function contarPor(chamados, keyFn) {
   const contagem = new Map();
@@ -94,7 +95,7 @@ function listarPorUf(chamados) {
     .sort((a, b) => b.total - a.total);
 }
 
-function listarPorCliente(chamados) {
+export function listarPorCliente(chamados) {
   const config = lerConfiguracao();
   const porCliente = new Map();
 
@@ -135,6 +136,7 @@ function detalheDoGrupo(chamados) {
     porEquipamento: contarPor(chamados, (chamado) => chamado.equipamento),
     porGrupoEquipamento: agruparEquipamentos(chamados),
     porCliente: contarPor(chamados, (chamado) => chamado.cliente),
+    porNivel: buildPorNivel(chamados),
     porCausa: temHistorico ? contarPor(chamados.filter((c) => c.causa), (chamado) => chamado.causa) : null,
     aguardandoAprovacao: {
       aguardando,
