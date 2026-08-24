@@ -1,7 +1,18 @@
 import { callDeskMcpTool } from "./deskMcp.js";
+import { isFinalizado } from "./indicadores.js";
 
-const TTL_MS = 15 * 60 * 1000;
+const TTL_MS_ABERTO = 15 * 60 * 1000;
+// Uma vez finalizado, causa/valor/dataAprovacao do chamado não mudam mais (foram lançados e
+// fechados) — cachear por muito mais tempo evita reconsultar o Desk toda vez que alguém reabre
+// um período já visto antes (Orçamento, Tendência Mensal, ICs...). Não é "pra sempre": se o
+// chamado for reaberto (DataFinalizacao volta a vazio), a próxima leitura já entra como "aberto"
+// e usa o TTL curto de novo.
+const TTL_MS_FINALIZADO = 30 * 24 * 60 * 60 * 1000;
 const cache = new Map(); // chave -> { expiresAt, historico }
+
+export function ttlPara(finalizado) {
+  return finalizado ? TTL_MS_FINALIZADO : TTL_MS_ABERTO;
+}
 
 // "_8575" e "_9637" não são documentados — são os campos extras "Valor (R$)" e "Orçamento/Custo"
 // (Tipo: Interações), descobertos via engenharia reversa do parâmetro Colunas da tool MCP
@@ -134,7 +145,7 @@ export function extrairTempoAguardandoPecaDias(interacoes) {
   return Math.round(diasTotal * 10) / 10;
 }
 
-export async function obterHistoricoChamado({ chave, codChamado }, { forceRefresh = false } = {}) {
+export async function obterHistoricoChamado({ chave, codChamado, finalizado = false }, { forceRefresh = false } = {}) {
   const cacheado = cache.get(chave);
   if (!forceRefresh && cacheado && cacheado.expiresAt > Date.now()) {
     return cacheado.historico;
@@ -151,7 +162,7 @@ export async function obterHistoricoChamado({ chave, codChamado }, { forceRefres
     tempoAguardandoPecaDias: extrairTempoAguardandoPecaDias(interacoes),
   };
 
-  cache.set(chave, { historico, expiresAt: Date.now() + TTL_MS });
+  cache.set(chave, { historico, expiresAt: Date.now() + ttlPara(finalizado) });
   return historico;
 }
 
@@ -172,7 +183,10 @@ async function mapComConcorrencia(itens, limite, fn) {
 
 export async function obterHistoricoEmLote(chamados, { concorrencia = 60, forceRefresh = false } = {}) {
   const historicos = await mapComConcorrencia(chamados, concorrencia, (chamado) =>
-    obterHistoricoChamado({ chave: chamado.Chave, codChamado: chamado.CodChamado }, { forceRefresh }).catch(() => ({
+    obterHistoricoChamado(
+      { chave: chamado.Chave, codChamado: chamado.CodChamado, finalizado: isFinalizado(chamado) },
+      { forceRefresh }
+    ).catch(() => ({
       causa: null,
       passouPorAguardandoAprovacao: false,
       valorAprovacao: null,

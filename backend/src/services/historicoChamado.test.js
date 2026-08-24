@@ -1,6 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extrairIcs, extrairHorimetro, extrairTempoAguardandoPecaDias } from "./historicoChamado.js";
+import { extrairIcs, extrairHorimetro, extrairTempoAguardandoPecaDias, ttlPara } from "./historicoChamado.js";
+
+test("ttlPara usa um TTL bem mais longo pra chamado finalizado do que pra chamado aberto", () => {
+  assert.equal(ttlPara(false), 15 * 60 * 1000);
+  assert.equal(ttlPara(true), 30 * 24 * 60 * 60 * 1000);
+  assert.ok(ttlPara(true) > ttlPara(false));
+});
 
 test("extrairIcs retorna o Ic de uma única interação", () => {
   const interacoes = [{ ICs: "300 - MTZ - Empilhadeira 06" }];
