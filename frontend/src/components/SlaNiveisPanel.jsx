@@ -16,6 +16,7 @@ export function SlaNiveisPanel({ porNivel, onSelecionarNivel }) {
           return (
             <StatTile
               key={nivel}
+              className={`sla-nivel-${nivel}`}
               label={dados ? `Nível ${nivel} — ${dados.label}` : `Nível ${nivel}`}
               value={dados?.abertos ?? 0}
               meta="Em aberto"

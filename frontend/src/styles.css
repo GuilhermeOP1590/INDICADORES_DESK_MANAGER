@@ -22,6 +22,14 @@
   --status-warning: #fab219;
   --status-serious: #ec835a;
   --status-critical: #d03b3b;
+
+  /* Escala de nível de SLA (1 = mais crítico a 5 = planejado) — convenção comum de ITSM
+     (ServiceNow/Jira: P1 vermelho intenso, decrescendo até verde claro no nível mais baixo). */
+  --sla-nivel-1: #d03b3b;
+  --sla-nivel-2: #e6743a;
+  --sla-nivel-3: #e6a700;
+  --sla-nivel-4: #8bc34a;
+  --sla-nivel-5: #a8d98a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +52,12 @@
     --series-6: #008300;
     --series-7: #9085e9;
     --series-8: #e66767;
+
+    --sla-nivel-1: #e0645f;
+    --sla-nivel-2: #e2814c;
+    --sla-nivel-3: #d9a63d;
+    --sla-nivel-4: #9ecb5f;
+    --sla-nivel-5: #b9e29c;
   }
 }
 
@@ -506,6 +520,18 @@ body {
 .stat-tile .value.status-good { color: var(--status-good); }
 .stat-tile .value.status-warning { color: var(--status-warning); }
 .stat-tile .value.status-critical { color: var(--status-critical); }
+
+.stat-tile.sla-nivel-1 { border-left: 4px solid var(--sla-nivel-1); }
+.stat-tile.sla-nivel-2 { border-left: 4px solid var(--sla-nivel-2); }
+.stat-tile.sla-nivel-3 { border-left: 4px solid var(--sla-nivel-3); }
+.stat-tile.sla-nivel-4 { border-left: 4px solid var(--sla-nivel-4); }
+.stat-tile.sla-nivel-5 { border-left: 4px solid var(--sla-nivel-5); }
+
+.stat-tile.sla-nivel-1 .value { color: var(--sla-nivel-1); }
+.stat-tile.sla-nivel-2 .value { color: var(--sla-nivel-2); }
+.stat-tile.sla-nivel-3 .value { color: var(--sla-nivel-3); }
+.stat-tile.sla-nivel-4 .value { color: var(--sla-nivel-4); }
+.stat-tile.sla-nivel-5 .value { color: var(--sla-nivel-5); }
 
 .panel-grid {
   display: grid;
