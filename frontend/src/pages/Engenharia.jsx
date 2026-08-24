@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { fetchEngenharia, fetchEngenhariaCausas } from "../api.js";
+import { fetchEngenharia, fetchEngenhariaCausas, fetchSlaNivelDetalhe } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
+import { SlaNiveisPanel } from "../components/SlaNiveisPanel.jsx";
 import { TeamPerformanceCards } from "../components/TeamPerformanceCards.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { CausaPanel } from "../components/CausaPanel.jsx";
@@ -118,6 +119,13 @@ export default function Engenharia() {
               </section>
 
               <TeamPerformanceCards operadores={detalhe.operadores} />
+
+              <SlaNiveisPanel
+                porNivel={detalhe.porNivel}
+                onSelecionarNivel={(nivel, label) =>
+                  drill.abrirNivelDetalhe({ ...filtroBase, nivel }, `SLA nível ${nivel} — ${label}`, fetchSlaNivelDetalhe)
+                }
+              />
 
               {drill.pilha !== null && (
                 <Modal title={drill.topo?.titulo ?? ""} onClose={drill.fechar} onBack={drill.pilha.length > 1 ? drill.voltar : undefined}>

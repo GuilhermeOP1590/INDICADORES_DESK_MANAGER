@@ -2,7 +2,7 @@ import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
 import { buildIndicadores, buildBacklog, buildPorCliente, isFinalizado, parseDateTime } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
-import { buildIndicadoresManutencao, buildIndicadoresEngenharia } from "../services/indicadoresPorTaxonomia.js";
+import { buildIndicadoresManutencao, buildIndicadoresEngenharia, listarPorCliente } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
 import { fetchDetalheChamado } from "../services/chamadoDetalhe.js";
@@ -552,6 +552,48 @@ indicadoresRouter.get("/chamados", async (req, res) => {
         operador: nomeOperador(c),
         valorAprovacao: historicoMap ? historicoMap.get(c.Chave)?.valorAprovacao ?? null : undefined,
       })),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Equivalente a /dashboard/sla/nivel-detalhe, mas no pipeline enriquecido usado por
+// Manutenção/Engenharia (mesmos filtros de /chamados: especialidade, tipo, tipoAtividade...).
+indicadoresRouter.get("/sla/nivel-detalhe", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const periodo = lerPeriodo(req);
+    const { especialidade, tipo, tipoAtividade, cliente, operador, status, q, nivel } = req.query;
+
+    if (!nivel) {
+      res.status(400).json({ erro: "Parâmetro nivel é obrigatório" });
+      return;
+    }
+
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    let filtrados = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(chamados), periodo), q), req.query.uf);
+
+    filtrados = filtrados.filter((c) => c.slaNivel === Number(nivel));
+    if (especialidade) filtrados = filtrados.filter((c) => c.especialidade === especialidade);
+    if (tipo) filtrados = filtrados.filter((c) => c.tipo === tipo);
+    if (tipoAtividade) filtrados = filtrados.filter((c) => c.tipoAtividade === tipoAtividade);
+    if (cliente) filtrados = filtrados.filter((c) => c.cliente === cliente);
+    if (status) filtrados = filtrados.filter((c) => c.NomeStatus === status);
+    if (operador) filtrados = filtrados.filter((c) => nomeOperador(c) === operador);
+
+    const porAtividade = [...filtrados.reduce((mapa, c) => {
+      const chave = valorDaDimensao(c, "atividade") || "Não informado";
+      mapa.set(chave, (mapa.get(chave) || 0) + 1);
+      return mapa;
+    }, new Map())].map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total);
+
+    res.json({
+      total: filtrados.length,
+      abertos: filtrados.filter((c) => !isFinalizado(c)).length,
+      porAtividade,
+      porCliente: listarPorCliente(filtrados),
     });
   } catch (error) {
     console.error(error);

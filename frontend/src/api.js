@@ -68,6 +68,10 @@ export function fetchSlaNivelDetalheDashboard(filtros) {
   return getJson("/api/dashboard/sla/nivel-detalhe", filtros);
 }
 
+export function fetchSlaNivelDetalhe(filtros) {
+  return getJson("/api/sla/nivel-detalhe", filtros);
+}
+
 export function fetchResumoCliente(filtros) {
   return getJson("/api/clientes/resumo", filtros);
 }
