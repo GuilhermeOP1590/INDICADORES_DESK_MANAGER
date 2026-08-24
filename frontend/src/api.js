@@ -64,6 +64,10 @@ export function fetchDashboardChamados(filtros) {
   return getJson("/api/dashboard/chamados", filtros);
 }
 
+export function fetchSlaNivelDetalheDashboard(filtros) {
+  return getJson("/api/dashboard/sla/nivel-detalhe", filtros);
+}
+
 export function fetchResumoCliente(filtros) {
   return getJson("/api/clientes/resumo", filtros);
 }

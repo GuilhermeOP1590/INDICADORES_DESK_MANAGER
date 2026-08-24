@@ -3,6 +3,7 @@ import { ChamadoDetalhe } from "./ChamadoDetalhe.jsx";
 import { ClienteResumoTable } from "./ClienteResumoTable.jsx";
 import { BacklogResumoTable } from "./BacklogResumoTable.jsx";
 import { HorizontalBarChart } from "./HorizontalBarChart.jsx";
+import { NivelDetalhePanel } from "./NivelDetalhePanel.jsx";
 
 export function DrillDownContent({ topo, onAbrirChamado, onAbrirLista }) {
   if (topo?.tipo === "resumoCliente") {
@@ -33,6 +34,16 @@ export function DrillDownContent({ topo, onAbrirChamado, onAbrirLista }) {
         formatValue={topo.formatValue}
         agregarOutros={false}
         onBarClick={(label) => onAbrirLista({ ...topo.filtroBase, equipamento: label }, label, topo.fetcher)}
+      />
+    );
+  }
+
+  if (topo?.tipo === "nivelDetalhe") {
+    return (
+      <NivelDetalhePanel
+        filtros={topo.filtros}
+        fetcher={topo.fetcher}
+        onAbrirLista={(extra, titulo) => onAbrirLista({ ...topo.filtros, ...extra }, titulo)}
       />
     );
   }

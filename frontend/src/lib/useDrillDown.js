@@ -18,6 +18,12 @@ export function useDrillDown() {
     setPilha([{ tipo: "resumoCliente", filtros, titulo }]);
   }
 
+  // Painel de detalhe (atividade + lojas) de um nível de SLA — aberto ao clicar num card do
+  // SlaNiveisPanel; guarda o fetcher pra que DrillDownContent saiba qual endpoint chamar.
+  function abrirNivelDetalhe(filtros, titulo, fetcher) {
+    setPilha([{ tipo: "nivelDetalhe", filtros, titulo, fetcher }]);
+  }
+
   // Resumo do backlog (chamados criados antes do período, ainda abertos) — os dados já vêm
   // prontos do backend junto com /indicadores, não precisa de fetch próprio como resumoCliente.
   function abrirResumoBacklog(dados, filtroBase, titulo) {
@@ -57,6 +63,7 @@ export function useDrillDown() {
     abrir,
     abrirLista,
     abrirResumoCliente,
+    abrirNivelDetalhe,
     abrirResumoBacklog,
     abrirListaEmpilhada,
     abrirSubRanking,

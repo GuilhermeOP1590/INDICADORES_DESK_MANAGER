@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados } from "../api.js";
+import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados, fetchSlaNivelDetalheDashboard } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
 import { SlaNiveisPanel } from "../components/SlaNiveisPanel.jsx";
 import { ClientePerformancePanel } from "../components/ClientePerformancePanel.jsx";
@@ -177,7 +177,7 @@ export default function Dashboard() {
           <SlaNiveisPanel
             porNivel={detalhe?.porNivel}
             onSelecionarNivel={(nivel, label) =>
-              drill.abrirLista({ ...filtroBase, nivel }, `SLA nível ${nivel} — ${label}`, fetchDashboardChamados)
+              drill.abrirNivelDetalhe({ ...filtroBase, nivel }, `SLA nível ${nivel} — ${label}`, fetchSlaNivelDetalheDashboard)
             }
           />
 

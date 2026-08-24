@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
-import { buildIndicadores, buildBacklog, isFinalizado, parseDateTime } from "../services/indicadores.js";
+import { buildIndicadores, buildBacklog, buildPorCliente, isFinalizado, parseDateTime } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento } from "../services/orcamento.js";
@@ -200,6 +200,65 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           tempoResolucaoHoras: situacaoVolume === "finalizado" ? tempoResolucaoHoras : undefined,
         };
       }),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Painel de drill-down de um nível de SLA: breakdown por atividade + ranking de lojas —
+// mesmo pipeline/filtros de /dashboard/chamados, só que devolve os dois agregados de uma vez
+// (evita 2 round-trips quando o usuário clica num card de nível).
+indicadoresRouter.get("/dashboard/sla/nivel-detalhe", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const periodo = lerPeriodo(req);
+    const { situacaoVolume, operador, area, cliente, tipo, status, q, nivel } = req.query;
+
+    if (!nivel) {
+      res.status(400).json({ erro: "Parâmetro nivel é obrigatório" });
+      return;
+    }
+
+    const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
+      fetchChamados({ forceRefresh }),
+      fetchUsuarios({ forceRefresh }),
+      fetchCodigoClientePorUsuario({ forceRefresh }),
+      fetchUfPorCodigoCliente({ forceRefresh }),
+      fetchSubCategorias({ forceRefresh }),
+    ]);
+
+    const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
+    const comArea = anexarSlaNivel(
+      apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)).filter(
+        (c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) !== CLIENTE_FICTICIO
+      )
+    );
+    const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(excluirCancelados(comArea), q), req.query.uf);
+
+    let filtrados = filtrarPorData(comFiltrosGlobais, periodo);
+    filtrados = filtrados.filter((c) => c.slaNivel === Number(nivel));
+    if (operador) filtrados = filtrados.filter((c) => nomeOperador(c) === operador);
+    if (area) filtrados = filtrados.filter((c) => c.area === area);
+    if (tipo) filtrados = filtrados.filter((c) => c.tipo === tipo);
+    if (cliente) filtrados = filtrados.filter((c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) === cliente);
+    if (situacaoVolume === "aberto") filtrados = filtrados.filter((c) => !isFinalizado(c));
+    if (situacaoVolume === "finalizado") filtrados = filtrados.filter((c) => isFinalizado(c));
+    if (status) filtrados = filtrados.filter((c) => c.NomeStatus === status);
+
+    const comCliente = filtrados.map((c) => ({ ...c, cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null }));
+    const porAtividade = [...comCliente.reduce((mapa, c) => {
+      const chave = valorDaDimensao(c, "atividade") || "Não informado";
+      mapa.set(chave, (mapa.get(chave) || 0) + 1);
+      return mapa;
+    }, new Map())].map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total);
+
+    res.json({
+      total: filtrados.length,
+      abertos: filtrados.filter((c) => !isFinalizado(c)).length,
+      porAtividade,
+      porCliente: buildPorCliente(comCliente),
     });
   } catch (error) {
     console.error(error);
