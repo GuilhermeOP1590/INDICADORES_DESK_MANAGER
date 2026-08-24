@@ -3,7 +3,7 @@ import { fetchChamados } from "../services/chamados.js";
 import { buildIndicadores, buildBacklog, buildPorCliente, isFinalizado, parseDateTime } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia, listarPorCliente } from "../services/indicadoresPorTaxonomia.js";
-import { buildOrcamento } from "../services/orcamento.js";
+import { buildOrcamento, buildResumoRapidoOrcamento } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
 import { fetchDetalheChamado } from "../services/chamadoDetalhe.js";
 import { obterHistoricoEmLote } from "../services/historicoChamado.js";
@@ -357,6 +357,28 @@ indicadoresRouter.get("/engenharia/causas", async (req, res) => {
   try {
     const chamadosEngenharia = await chamadosDaEspecialidade(req, "Engenharia");
     res.json(await carregarCausas(chamadosEngenharia));
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Contraparte rápida de /orcamento — só filtra a lista de chamados já cacheada (sem buscar
+// histórico de interações), pra renderizar total/aguardando na tela antes do resto do payload
+// (que pode levar até 1 minuto). Ver docs/superpowers/plans/2026-08-24-orcamento-carregamento-em-camadas.md.
+indicadoresRouter.get("/orcamento/resumo-rapido", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const periodo = lerPeriodo(req);
+    const especialidade = req.query.especialidade || "Geral";
+
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    let noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(chamados), periodo), req.query.q), req.query.uf);
+    if (especialidade !== "Geral") {
+      noPeriodo = noPeriodo.filter((c) => c.especialidade === especialidade);
+    }
+
+    res.json(buildResumoRapidoOrcamento(noPeriodo));
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });

@@ -84,6 +84,13 @@ function buildHistoricoAprovacoes(avaliados, historicoMap) {
     .sort((a, b) => b.dataAprovacao.localeCompare(a.dataAprovacao));
 }
 
+// Parte "rápida" do orçamento: só olha NomeStatus, não depende de obterHistoricoEmLote (a
+// busca cara, por chamado, no Desk) — pra poder aparecer na tela antes do resto do payload.
+export function buildResumoRapidoOrcamento(chamados) {
+  const aguardandoTotal = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação").length;
+  return { totalChamados: chamados.length, aguardandoTotal };
+}
+
 export function buildOrcamento(chamados, historicoMap) {
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
   const avaliados = chamados.filter(
