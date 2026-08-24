@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchIndicadores, fetchIndicadoresCausas, fetchDashboardChamados } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
+import { SlaNiveisPanel } from "../components/SlaNiveisPanel.jsx";
 import { ClientePerformancePanel } from "../components/ClientePerformancePanel.jsx";
 import { VolumeTrendChart } from "../components/VolumeTrendChart.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
@@ -172,6 +173,13 @@ export default function Dashboard() {
               }
             />
           </section>
+
+          <SlaNiveisPanel
+            porNivel={detalhe?.porNivel}
+            onSelecionarNivel={(nivel, label) =>
+              drill.abrirLista({ ...filtroBase, nivel }, `SLA nível ${nivel} — ${label}`, fetchDashboardChamados)
+            }
+          />
 
           <ClientePerformancePanel
             porCliente={porCliente}

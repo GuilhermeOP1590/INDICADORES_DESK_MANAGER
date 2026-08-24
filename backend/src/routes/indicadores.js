@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
 import { buildIndicadores, buildBacklog, isFinalizado, parseDateTime } from "../services/indicadores.js";
-import { carregarChamadosEnriquecidos, anexarUf, anexarArea, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
+import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
@@ -105,7 +105,7 @@ indicadoresRouter.get("/indicadores", async (req, res) => {
       ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex));
+    const comArea = anexarSlaNivel(apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)));
     const comCliente = comArea
       .map((c) => ({ ...c, cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null }))
       .filter((c) => c.cliente !== CLIENTE_FICTICIO);
@@ -134,7 +134,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "true";
     const periodo = lerPeriodo(req);
-    const { situacaoVolume, operador, area, cliente, tipo, status, criadosAntes, q, dimensao, foraDoTopo } = req.query;
+    const { situacaoVolume, operador, area, cliente, tipo, status, criadosAntes, q, dimensao, foraDoTopo, nivel } = req.query;
 
     const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
       fetchChamados({ forceRefresh }),
@@ -145,8 +145,10 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
-    const comArea = apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)).filter(
-      (c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) !== CLIENTE_FICTICIO
+    const comArea = anexarSlaNivel(
+      apenasManutencaoEEngenharia(anexarArea(comUf, subCategoriaIndex)).filter(
+        (c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) !== CLIENTE_FICTICIO
+      )
     );
     const comFiltrosGlobais = filtrarPorUf(buscarPorTexto(excluirCancelados(comArea), q), req.query.uf);
 
@@ -158,6 +160,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     if (operador) filtrados = filtrados.filter((c) => nomeOperador(c) === operador);
     if (area) filtrados = filtrados.filter((c) => c.area === area);
     if (tipo) filtrados = filtrados.filter((c) => c.tipo === tipo);
+    if (nivel) filtrados = filtrados.filter((c) => c.slaNivel === Number(nivel));
     if (cliente) filtrados = filtrados.filter((c) => (clientePorUsuario.get(c.ChaveUsuario) ?? null) === cliente);
     if (situacaoVolume === "aberto") filtrados = filtrados.filter((c) => !isFinalizado(c));
     if (situacaoVolume === "finalizado") filtrados = filtrados.filter((c) => isFinalizado(c));
@@ -184,6 +187,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           status: c.NomeStatus,
           situacao: classificarStatus(c.NomeStatus, config),
           prioridade: c.NomePrioridade,
+          slaNivel: c.slaNivel,
           dataCriacao: c.DataCriacao,
           horaCriacao: c.HoraCriacao,
           dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
@@ -424,6 +428,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
       q,
       dimensao,
       foraDoTopo,
+      nivel,
     } = req.query;
 
     const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
@@ -432,6 +437,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
     if (especialidade) filtrados = filtrados.filter((c) => c.especialidade === especialidade);
     if (tipo) filtrados = filtrados.filter((c) => c.tipo === tipo);
     if (tipoAtividade) filtrados = filtrados.filter((c) => c.tipoAtividade === tipoAtividade);
+    if (nivel) filtrados = filtrados.filter((c) => c.slaNivel === Number(nivel));
     if (atividade) filtrados = filtrados.filter((c) => valorDaDimensao(c, "atividade") === atividade);
     if (equipamento) filtrados = filtrados.filter((c) => c.equipamento === equipamento);
     if (cliente) filtrados = filtrados.filter((c) => c.cliente === cliente);
@@ -477,6 +483,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
         status: c.NomeStatus,
         situacao: classificarStatus(c.NomeStatus, config),
         prioridade: c.NomePrioridade,
+        slaNivel: c.slaNivel,
         dataCriacao: c.DataCriacao,
         horaCriacao: c.HoraCriacao,
         dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
