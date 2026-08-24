@@ -3,6 +3,7 @@ import { fetchSubCategorias } from "./subcategorias.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario } from "./usuarios.js";
 import { fetchUfPorCodigoCliente } from "./clientesUf.js";
 import { fetchChamados } from "./chamados.js";
+import { parseSlaNivel } from "./slaNivel.js";
 
 // "APROVADORES" é um cliente/unidade fictício, criado só pra testar o fluxo de aprovação de
 // orçamento no DeskManager — não é uma unidade real, não deve aparecer em nenhum indicador.
@@ -43,12 +44,17 @@ export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsua
     enriquecidos.push({
       ...chamado,
       ...classificacao,
+      ...parseSlaNivel(chamado.NomePrioridade),
       cliente,
       uf: ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }),
     });
   }
 
   return enriquecidos;
+}
+
+export function anexarSlaNivel(chamados) {
+  return chamados.map((chamado) => ({ ...chamado, ...parseSlaNivel(chamado.NomePrioridade) }));
 }
 
 export async function carregarChamadosEnriquecidos({ forceRefresh = false } = {}) {

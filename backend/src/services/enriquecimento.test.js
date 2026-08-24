@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSubCategoriaIndex } from "./subcategorias.js";
 import { buildClientePorUsuario, buildCodigoClientePorUsuario } from "./usuarios.js";
-import { enriquecerChamados } from "./enriquecimento.js";
+import { enriquecerChamados, anexarSlaNivel } from "./enriquecimento.js";
 
 const SUBCATEGORIA_INDEX = buildSubCategoriaIndex([
   { Sequencia: "005705", SubCategoria: "Bebedouro", Categoria: "Manutenção - Equipamentos" },
@@ -61,4 +61,30 @@ test("cliente fica null quando ChaveUsuario não está no mapa", () => {
   assert.equal(resultado.length, 1);
   assert.equal(resultado[0].cliente, null);
   assert.equal(resultado[0].uf, null);
+});
+
+test("anexa slaNivel e slaNivelLabel a partir de NomePrioridade", () => {
+  const chamados = [
+    { Chave: 6544, SequenciaSubCategoria: "005705", ChaveUsuario: 586, NomePrioridade: "1 - Muito Alta" },
+  ];
+
+  const resultado = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(resultado[0].slaNivel, 1);
+  assert.equal(resultado[0].slaNivelLabel, "Muito Alta");
+});
+
+test("anexarSlaNivel anexa slaNivel/slaNivelLabel sem exigir enriquecimento completo", () => {
+  const chamados = [{ Chave: 1, NomePrioridade: "3 - Moderada" }, { Chave: 2, NomePrioridade: null }];
+  const resultado = anexarSlaNivel(chamados);
+
+  assert.equal(resultado[0].slaNivel, 3);
+  assert.equal(resultado[0].slaNivelLabel, "Moderada");
+  assert.equal(resultado[1].slaNivel, null);
+  assert.equal(resultado[1].Chave, 2);
 });
