@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HorizontalBarChart } from "./HorizontalBarChart.jsx";
+import { exportarLinhas } from "../lib/exportExcel.js";
 
 // Aberto ao clicar num card de nível de SLA — mostra, lado a lado, o breakdown por atividade
 // e o ranking de lojas (clientes) daquele nível, já com os mesmos filtros globais (período/uf/busca)
@@ -50,6 +51,25 @@ export function NivelDetalhePanel({ filtros, fetcher, onAbrirLista }) {
 
         <div className="panel">
           <h3>Por loja</h3>
+          <button
+            className="refresh-btn"
+            style={{ marginBottom: 8 }}
+            onClick={() =>
+              exportarLinhas(
+                state.dados.porCliente,
+                [
+                  { chave: "cliente", titulo: "Loja" },
+                  { chave: "total", titulo: "Total" },
+                  { chave: "abertos", titulo: "Abertos" },
+                  { chave: "fechados", titulo: "Fechados" },
+                  { chave: "percentualResolucao", titulo: "% Resolução" },
+                ],
+                "lojas-por-nivel-sla"
+              )
+            }
+          >
+            Exportar Excel
+          </button>
           <table>
             <thead>
               <tr>

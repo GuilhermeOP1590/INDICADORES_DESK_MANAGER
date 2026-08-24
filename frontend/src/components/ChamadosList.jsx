@@ -4,6 +4,7 @@ import { formatBR, formatHoras } from "../lib/datas.js";
 import { contagemPorCampo } from "../lib/contagem.js";
 import { SortableTh } from "./SortableTh.jsx";
 import { useSort } from "../lib/useSort.js";
+import { exportarLinhas } from "../lib/exportExcel.js";
 
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -80,6 +81,17 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
 
   const { sorted, sortKey, sortDir, toggleSort } = useSort(chamadosFiltrados);
 
+  const colunasExport = [
+    { chave: "codChamado", titulo: "Código" },
+    { chave: "assunto", titulo: "Assunto" },
+    { chave: "status", titulo: "Status" },
+    { chave: "prioridade", titulo: "Prioridade" },
+    { chave: "dataHora", titulo: "Data de criação" },
+    { chave: "dataHoraFinalizacao", titulo: "Data de finalização" },
+    { chave: "cliente", titulo: "Cliente" },
+    { chave: "operador", titulo: "Operador" },
+  ];
+
   if (state.status === "loading") return <p className="subtitle">Carregando chamados...</p>;
   if (state.status === "error") return <div className="state-banner error">Erro ao carregar chamados: {state.error}</div>;
   if (state.chamados.length === 0) return <p className="subtitle">Nenhum chamado encontrado com esse filtro.</p>;
@@ -130,6 +142,9 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
             ))}
           </select>
         )}
+        <button className="refresh-btn" onClick={() => exportarLinhas(sorted, colunasExport, "chamados")}>
+          Exportar Excel
+        </button>
         <span className="meta">
           {chamadosFiltrados.length} de {state.chamados.length}
         </span>
