@@ -533,6 +533,21 @@ body {
 .stat-tile.sla-nivel-4 .value { color: var(--sla-nivel-4); }
 .stat-tile.sla-nivel-5 .value { color: var(--sla-nivel-5); }
 
+.badge-nivel {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1a19;
+  white-space: nowrap;
+}
+.badge-nivel.sla-nivel-1 { background: var(--sla-nivel-1); }
+.badge-nivel.sla-nivel-2 { background: var(--sla-nivel-2); }
+.badge-nivel.sla-nivel-3 { background: var(--sla-nivel-3); }
+.badge-nivel.sla-nivel-4 { background: var(--sla-nivel-4); }
+.badge-nivel.sla-nivel-5 { background: var(--sla-nivel-5); }
+
 .panel-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));

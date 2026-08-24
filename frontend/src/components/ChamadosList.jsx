@@ -60,6 +60,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
   const temTempoResolucao = state.chamados.some((c) => c.tempoResolucaoHoras !== undefined);
   const temArea = state.chamados.some((c) => c.area !== undefined);
   const temTipo = tiposDisponiveis.length > 0;
+  const temPrioridade = state.chamados.some((c) => c.prioridade !== undefined);
 
   const chamadosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -159,6 +160,9 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
               <SortableTh label="Código" sortKeyName="codChamado" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortableTh label="Assunto" sortKeyName="assunto" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortableTh label="Status" sortKeyName="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              {temPrioridade && (
+                <SortableTh label="Prioridade" sortKeyName="prioridade" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              )}
               <SortableTh label="Data de criação" sortKeyName="dataHora" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               <SortableTh
                 label="Data de finalização"
@@ -199,6 +203,15 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 <td>{c.codChamado}</td>
                 <td>{c.assunto}</td>
                 <td>{c.status}</td>
+                {temPrioridade && (
+                  <td>
+                    {c.prioridade ? (
+                      <span className={`badge-nivel${c.slaNivel ? ` sla-nivel-${c.slaNivel}` : ""}`}>{c.prioridade}</span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                )}
                 <td>
                   {formatBR(c.dataCriacao)} {c.horaCriacao}
                 </td>
