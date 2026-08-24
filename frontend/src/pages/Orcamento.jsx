@@ -5,6 +5,7 @@ import { DonutChart } from "../components/DonutChart.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
 import { RegiaoOrcamentoPanel } from "../components/RegiaoOrcamentoPanel.jsx";
 import { HistoricoAprovacoesTable } from "../components/HistoricoAprovacoesTable.jsx";
+import { TendenciaMensalCausa } from "../components/TendenciaMensalCausa.jsx";
 import { ComparacaoOrcamento } from "../components/ComparacaoOrcamento.jsx";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { DateFilterBar } from "../components/DateFilterBar.jsx";
@@ -229,6 +230,8 @@ export default function Orcamento() {
             <p className="subtitle">Chamados avaliados, do mais recente pro mais antigo — clique numa linha pra abrir o chamado</p>
             <HistoricoAprovacoesTable dados={payload.historicoAprovacoes} onAbrirChamado={drill.abrirChamado} />
           </div>
+
+          <TendenciaMensalCausa especialidade={aba} />
         </>
       )}
     </div>

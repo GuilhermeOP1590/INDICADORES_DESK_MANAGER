@@ -139,3 +139,7 @@ export function fetchEquipamentosPorIc(opts) {
 export function fetchTendenciaMensalManutencao(opts) {
   return getJson("/api/manutencao/tendencia-mensal", opts);
 }
+
+export function fetchTendenciaMensalCausa(opts) {
+  return getJson("/api/orcamento/tendencia-mensal-causa", opts);
+}
