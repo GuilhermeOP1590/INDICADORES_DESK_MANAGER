@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchOrcamento } from "../api.js";
+import { fetchOrcamento, fetchOrcamentoResumoRapido } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
 import { DonutChart } from "../components/DonutChart.jsx";
 import { MaximizableChart } from "../components/MaximizableChart.jsx";
@@ -36,12 +36,29 @@ export default function Orcamento() {
   const busca = useDebouncedValue(buscaInput);
   const [uf, setUf] = useState("");
   const [state, setState] = useState({ status: "loading", payload: null, error: null });
+  const [resumoRapido, setResumoRapido] = useState({ status: "idle", dados: null, error: null });
   const drill = useDrillDown();
   const ufsDisponiveis = useUfsDisponiveis();
 
   const [comparando, setComparando] = useState(false);
   const [periodoComparacao, setPeriodoComparacao] = useState(deslocarMeses(periodoMesFiscal(), -1));
   const [comparacao, setComparacao] = useState({ status: "idle", payload: null, error: null });
+
+  async function carregarResumoRapido(forceRefresh = false) {
+    setResumoRapido((s) => ({ ...s, status: "loading" }));
+    try {
+      const dados = await fetchOrcamentoResumoRapido({
+        forceRefresh,
+        especialidade: aba,
+        ...periodo,
+        q: busca || undefined,
+        uf: uf || undefined,
+      });
+      setResumoRapido({ status: "ready", dados, error: null });
+    } catch (error) {
+      setResumoRapido({ status: "error", dados: null, error: error.message });
+    }
+  }
 
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
@@ -54,6 +71,7 @@ export default function Orcamento() {
   }
 
   useEffect(() => {
+    carregarResumoRapido();
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [aba, periodo.dataInicio, periodo.dataFim, busca, uf]);
@@ -98,7 +116,14 @@ export default function Orcamento() {
     <div>
       <div className="page-toolbar">
         <DateFilterBar periodo={periodo} onChange={setPeriodo} />
-        <button className="refresh-btn" onClick={() => load(true)} disabled={state.status === "loading"}>
+        <button
+          className="refresh-btn"
+          onClick={() => {
+            carregarResumoRapido(true);
+            load(true);
+          }}
+          disabled={state.status === "loading"}
+        >
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
       </div>
@@ -126,9 +151,16 @@ export default function Orcamento() {
 
       <SubTabs options={ABAS} active={aba} onChange={setAba} />
 
+      {resumoRapido.dados && (
+        <div className="meta" style={{ marginBottom: 12 }}>
+          {resumoRapido.dados.totalChamados} chamados no período ({aba}) — {resumoRapido.dados.aguardandoTotal} aguardando
+          aprovação
+        </div>
+      )}
+
       {state.status === "loading" && (
         <p className="subtitle">
-          Calculando orçamento do período — busca a causa e o valor de aprovação de cada chamado, pode levar até 1 minuto em
+          Calculando valores aprovados — busca a causa e o valor de aprovação de cada chamado, pode levar até 1 minuto em
           períodos grandes...
         </p>
       )}
@@ -137,10 +169,6 @@ export default function Orcamento() {
 
       {payload && (
         <>
-          <div className="meta" style={{ marginBottom: 12 }}>
-            {payload.totalChamados} chamados no período ({aba})
-          </div>
-
           <section className="stat-grid">
             <StatTile
               label="Aguardando Aprovação"

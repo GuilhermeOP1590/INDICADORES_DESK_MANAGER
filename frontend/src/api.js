@@ -48,6 +48,10 @@ export function fetchOrcamento(opts) {
   return getJson("/api/orcamento", opts);
 }
 
+export function fetchOrcamentoResumoRapido(opts) {
+  return getJson("/api/orcamento/resumo-rapido", opts);
+}
+
 export function fetchUfsDisponiveis() {
   return getJson("/api/ufs", {});
 }
