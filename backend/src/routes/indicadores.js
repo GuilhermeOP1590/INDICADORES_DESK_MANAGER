@@ -17,6 +17,7 @@ import {
 import { lerPrioridades, adicionarOuAtualizarPrioridade, removerPrioridade } from "../services/prioridades.js";
 import { buildPorIc } from "../services/icsEquipamento.js";
 import { buildTendenciaMensal } from "../services/tendenciaMensalManutencao.js";
+import { buildTendenciaMensalPorCausa } from "../services/tendenciaMensalCausa.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario } from "../services/usuarios.js";
 import { fetchUfPorCodigoCliente } from "../services/clientesUf.js";
 import { fetchSubCategorias } from "../services/subcategorias.js";
@@ -842,6 +843,38 @@ indicadoresRouter.get("/manutencao/tendencia-mensal", async (req, res) => {
     const tendencia = buildTendenciaMensal(noPeriodo, historicoMap);
 
     res.json({ tendencia, totalChamados: noPeriodo.length });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Mesmo padrão de /manutencao/tendencia-mensal: cálculo caro (histórico de interações),
+// self-service com período próprio no frontend — não faz parte do payload principal de
+// /orcamento pra não deixar o carregamento inicial da aba ainda mais lento.
+indicadoresRouter.get("/orcamento/tendencia-mensal-causa", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const periodo = lerPeriodo(req);
+    if (!periodo.dataInicio || !periodo.dataFim) {
+      res.status(400).json({ erro: "Período (dataInicio e dataFim) é obrigatório" });
+      return;
+    }
+    const especialidade = req.query.especialidade || "Geral";
+
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    let noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(chamados), periodo), req.query.q), req.query.uf);
+    if (especialidade !== "Geral") {
+      noPeriodo = noPeriodo.filter((c) => c.especialidade === especialidade);
+    }
+
+    const historicoMap = await obterHistoricoEmLote(noPeriodo);
+    const avaliados = noPeriodo.filter(
+      (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
+    );
+    const tendencia = buildTendenciaMensalPorCausa(avaliados, historicoMap);
+
+    res.json({ ...tendencia, totalChamados: noPeriodo.length, totalAvaliados: avaliados.length });
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
