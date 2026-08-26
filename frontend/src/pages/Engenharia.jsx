@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchEngenharia, fetchEngenhariaCausas, fetchSlaNivelDetalhe } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
 import { SlaNiveisPanel } from "../components/SlaNiveisPanel.jsx";
@@ -17,6 +18,10 @@ import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { periodoMesFiscal } from "../lib/datas.js";
 
 const GERAL = "__geral__";
+// Status real do Desk pra equipamento avaliado e reprovado pra uso, com laudo técnico anexado
+// — mesmo valor usado em Manutencao.jsx (front e back não compartilham módulo, cada lado
+// declara essa string localmente).
+const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function Engenharia() {
@@ -107,6 +112,17 @@ export default function Engenharia() {
                   statusClass="status-warning"
                   meta={tipoAtivo === GERAL && detalhesAprovacao ? formatBRL(detalhesAprovacao.valorAguardando) : undefined}
                   onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "aguardando" }, "Aguardando Aprovação")}
+                />
+                <StatTile
+                  label="Condenado (laudo)"
+                  value={detalhe.condenado}
+                  statusClass={detalhe.condenado > 0 ? "status-critical" : undefined}
+                  meta={
+                    <Link to="/condenados" onClick={(e) => e.stopPropagation()}>
+                      Ver todos pendentes →
+                    </Link>
+                  }
+                  onClick={() => drill.abrirLista({ ...filtroBase, status: STATUS_CONDENADO }, "Condenado (laudo)")}
                 />
                 {tipoAtivo === GERAL && detalhesAprovacao && (
                   <StatTile
