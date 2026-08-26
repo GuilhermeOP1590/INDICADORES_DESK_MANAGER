@@ -1,6 +1,6 @@
 import { classificarChamado } from "./taxonomia.js";
 import { fetchSubCategorias } from "./subcategorias.js";
-import { fetchUsuarios, fetchCodigoClientePorUsuario } from "./usuarios.js";
+import { fetchUsuarios, fetchCodigoClientePorUsuario, fetchNomePorUsuario } from "./usuarios.js";
 import { fetchUfPorCodigoCliente } from "./clientesUf.js";
 import { fetchChamados } from "./chamados.js";
 import { parseSlaNivel } from "./slaNivel.js";
@@ -31,7 +31,7 @@ export function anexarArea(chamados, subCategoriaIndex) {
   });
 }
 
-export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente }) {
+export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, nomePorUsuario }) {
   const enriquecidos = [];
 
   for (const chamado of chamados) {
@@ -46,6 +46,7 @@ export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsua
       ...classificacao,
       ...parseSlaNivel(chamado.NomePrioridade),
       cliente,
+      solicitante: nomePorUsuario?.get(chamado.ChaveUsuario) ?? null,
       uf: ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }),
     });
   }
@@ -58,20 +59,28 @@ export function anexarSlaNivel(chamados) {
 }
 
 export async function carregarChamadosEnriquecidos({ forceRefresh = false } = {}) {
-  const [{ data: chamados, total: totalOriginal }, subCategoriaIndex, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente] =
-    await Promise.all([
-      fetchChamados({ forceRefresh }),
-      fetchSubCategorias({ forceRefresh }),
-      fetchUsuarios({ forceRefresh }),
-      fetchCodigoClientePorUsuario({ forceRefresh }),
-      fetchUfPorCodigoCliente({ forceRefresh }),
-    ]);
+  const [
+    { data: chamados, total: totalOriginal },
+    subCategoriaIndex,
+    clientePorUsuario,
+    codigoClientePorUsuario,
+    ufPorCodigoCliente,
+    nomePorUsuario,
+  ] = await Promise.all([
+    fetchChamados({ forceRefresh }),
+    fetchSubCategorias({ forceRefresh }),
+    fetchUsuarios({ forceRefresh }),
+    fetchCodigoClientePorUsuario({ forceRefresh }),
+    fetchUfPorCodigoCliente({ forceRefresh }),
+    fetchNomePorUsuario({ forceRefresh }),
+  ]);
 
   const enriquecidos = enriquecerChamados(chamados, {
     subCategoriaIndex,
     clientePorUsuario,
     codigoClientePorUsuario,
     ufPorCodigoCliente,
+    nomePorUsuario,
   });
 
   return { chamados: enriquecidos, totalOriginal };

@@ -18,7 +18,7 @@ import { lerPrioridades, adicionarOuAtualizarPrioridade, removerPrioridade } fro
 import { buildPorIc } from "../services/icsEquipamento.js";
 import { buildTendenciaMensal } from "../services/tendenciaMensalManutencao.js";
 import { buildTendenciaMensalPorCausa } from "../services/tendenciaMensalCausa.js";
-import { fetchUsuarios, fetchCodigoClientePorUsuario } from "../services/usuarios.js";
+import { fetchUsuarios, fetchCodigoClientePorUsuario, fetchNomePorUsuario } from "../services/usuarios.js";
 import { fetchUfPorCodigoCliente } from "../services/clientesUf.js";
 import { fetchSubCategorias } from "../services/subcategorias.js";
 
@@ -137,13 +137,15 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     const periodo = lerPeriodo(req);
     const { situacaoVolume, operador, area, cliente, tipo, status, criadosAntes, q, dimensao, foraDoTopo, nivel } = req.query;
 
-    const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex] = await Promise.all([
-      fetchChamados({ forceRefresh }),
-      fetchUsuarios({ forceRefresh }),
-      fetchCodigoClientePorUsuario({ forceRefresh }),
-      fetchUfPorCodigoCliente({ forceRefresh }),
-      fetchSubCategorias({ forceRefresh }),
-    ]);
+    const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex, nomePorUsuario] =
+      await Promise.all([
+        fetchChamados({ forceRefresh }),
+        fetchUsuarios({ forceRefresh }),
+        fetchCodigoClientePorUsuario({ forceRefresh }),
+        fetchUfPorCodigoCliente({ forceRefresh }),
+        fetchSubCategorias({ forceRefresh }),
+        fetchNomePorUsuario({ forceRefresh }),
+      ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
     const comArea = anexarSlaNivel(
@@ -194,6 +196,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
           horaFinalizacao: isFinalizado(c) ? c.HoraFinalizacao : null,
           cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null,
+          solicitante: nomePorUsuario.get(c.ChaveUsuario) ?? null,
           uf: c.uf,
           area: c.area,
           tipo: c.tipo,
@@ -571,6 +574,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
         dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
         horaFinalizacao: isFinalizado(c) ? c.HoraFinalizacao : null,
         cliente: c.cliente,
+        solicitante: c.solicitante ?? null,
         uf: c.uf,
         operador: nomeOperador(c),
         valorAprovacao: historicoMap ? historicoMap.get(c.Chave)?.valorAprovacao ?? null : undefined,

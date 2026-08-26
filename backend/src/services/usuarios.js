@@ -46,10 +46,26 @@ export function buildCodigoClientePorUsuario(list) {
   return mapa;
 }
 
+// Nome do solicitante do chamado — o Desk devolve só ChaveUsuario em ChamadosSuporte/lista,
+// então o nome vem da mesma lista de usuários já cacheada aqui (sem request adicional).
+export function buildNomePorUsuario(list) {
+  const mapa = new Map();
+  for (const usuario of list) {
+    if (usuario.Chave === undefined || usuario.Chave === null) continue;
+    const nome = [usuario.Nome, usuario.Sobrenome].filter(Boolean).join(" ").trim();
+    mapa.set(usuario.Chave, nome || null);
+  }
+  return mapa;
+}
+
 export async function fetchUsuarios(opts = {}) {
   return buildClientePorUsuario(await getListaUsuarios(opts));
 }
 
 export async function fetchCodigoClientePorUsuario(opts = {}) {
   return buildCodigoClientePorUsuario(await getListaUsuarios(opts));
+}
+
+export async function fetchNomePorUsuario(opts = {}) {
+  return buildNomePorUsuario(await getListaUsuarios(opts));
 }

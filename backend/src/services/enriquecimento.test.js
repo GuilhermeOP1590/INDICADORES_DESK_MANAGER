@@ -88,3 +88,32 @@ test("anexarSlaNivel anexa slaNivel/slaNivelLabel sem exigir enriquecimento comp
   assert.equal(resultado[1].slaNivel, null);
   assert.equal(resultado[1].Chave, 2);
 });
+
+test("enriquecerChamados anexa o nome do solicitante a partir de nomePorUsuario", () => {
+  const chamados = [
+    { Chave: 1, SequenciaSubCategoria: "005705", ChaveUsuario: 586, NomePrioridade: "1 - Muito Alta" },
+  ];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+    nomePorUsuario: new Map([[586, "Jose Carlos"]]),
+  });
+
+  assert.equal(enriquecido.solicitante, "Jose Carlos");
+});
+
+test("solicitante fica null quando nomePorUsuario não é fornecido", () => {
+  const chamados = [{ Chave: 2, SequenciaSubCategoria: "005705", ChaveUsuario: 586 }];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(enriquecido.solicitante, null);
+});

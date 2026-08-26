@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildClientePorUsuario, buildCodigoClientePorUsuario } from "./usuarios.js";
+import { buildClientePorUsuario, buildCodigoClientePorUsuario, buildNomePorUsuario } from "./usuarios.js";
 
 const AMOSTRA_REAL = [
   { Chave: 20, CodigoCliente: 3, Cliente: "CD 300", Nome: "Leony", Sobrenome: "Silva" },
@@ -25,4 +25,17 @@ test("buildCodigoClientePorUsuario mapeia Chave do usuário para CodigoCliente",
   assert.equal(mapa.size, 2);
   assert.equal(mapa.get(20), 3);
   assert.equal(mapa.get(586), 36);
+});
+
+test("buildNomePorUsuario junta Nome e Sobrenome do solicitante", () => {
+  const mapa = buildNomePorUsuario([
+    ...AMOSTRA_REAL,
+    { Chave: 900, CodigoCliente: 3, Cliente: "CD 300", Nome: "Marcia", Sobrenome: "" },
+    { Chave: 901, CodigoCliente: 3, Cliente: "CD 300" },
+  ]);
+
+  assert.equal(mapa.get(20), "Leony Silva");
+  assert.equal(mapa.get(586), "Jose Carlos");
+  assert.equal(mapa.get(900), "Marcia");
+  assert.equal(mapa.get(901), null);
 });
