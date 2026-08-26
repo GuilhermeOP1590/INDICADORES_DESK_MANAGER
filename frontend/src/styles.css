@@ -367,12 +367,14 @@ body {
   background: var(--surface-1);
   border-radius: 12px;
   border: 1px solid var(--border);
-  width: 100%;
   /* Tabelas de chamados chegaram a ~13 colunas (Solicitante entrou depois) — 900px forçava
-     rolagem horizontal mesmo em telas largas. 96vw deixa uma folga de respiro nas bordas em
-     qualquer tamanho de tela; o teto de 1600px evita uma tabela de 3 colunas esticar até virar
-     uma faixa fina e ilegível num monitor ultrawide. */
-  max-width: min(1600px, 96vw);
+     rolagem horizontal mesmo em telas largas. `width: 100%` (e não uma unidade vw) é o que
+     mantém o modal dentro da área real disponível: vw ignora a barra de rolagem e qualquer
+     escala/zoom do navegador, e nesses casos o card acaba esticando pra fora da janela. O
+     teto de 1600px evita que uma tabela de 3 colunas estique até virar uma faixa fina e
+     ilegível num monitor ultrawide. */
+  width: 100%;
+  max-width: 1600px;
   max-height: 85vh;
   display: flex;
   flex-direction: column;
