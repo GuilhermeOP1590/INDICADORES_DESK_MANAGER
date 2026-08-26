@@ -154,13 +154,31 @@ function buildPorUf(chamados) {
     .sort((a, b) => b.total - a.total);
 }
 
-export function buildPorCliente(chamados) {
+const MS_POR_DIA = 24 * 60 * 60 * 1000;
+
+// Aging do backlog: há quantos dias está parado o chamado em aberto mais antigo da loja.
+// Contagem de abertos sozinha não separa "10 chamados de ontem" de "3 parados há 60 dias",
+// e é o segundo caso que precisa de ação.
+function diasEmAberto(dataCriacao, hoje) {
+  const criacao = parseDateTime(dataCriacao, "00:00:00");
+  if (!criacao) return null;
+  return Math.max(0, Math.floor((hoje.getTime() - criacao.getTime()) / MS_POR_DIA));
+}
+
+export function buildPorCliente(chamados, { hoje = new Date() } = {}) {
   const config = lerConfiguracao();
   const porCliente = new Map();
 
   for (const c of chamados) {
     const cliente = c.cliente || "Não informado";
-    const atual = porCliente.get(cliente) || { cliente, total: 0, abertos: 0, fechados: 0, concluidos: 0 };
+    const atual = porCliente.get(cliente) || {
+      cliente,
+      total: 0,
+      abertos: 0,
+      fechados: 0,
+      concluidos: 0,
+      diasMaisAntigoAberto: null,
+    };
     atual.total += 1;
 
     const classe = classificarStatus(c.NomeStatus, config);
@@ -171,6 +189,15 @@ export function buildPorCliente(chamados) {
       atual.abertos += 1;
     }
     // classe "outro" (status marcado como "Ignorar") só soma no total, não em abertos/concluidos.
+
+    // Aging olha "não finalizado" (e não a classe "aberto"): um chamado em "Aguardando
+    // Aprovação" fica fora do % de resolução, mas continua parado na loja e precisa aparecer.
+    if (!isFinalizado(c)) {
+      const dias = diasEmAberto(c.DataCriacao, hoje);
+      if (dias !== null && (atual.diasMaisAntigoAberto === null || dias > atual.diasMaisAntigoAberto)) {
+        atual.diasMaisAntigoAberto = dias;
+      }
+    }
 
     porCliente.set(cliente, atual);
   }
