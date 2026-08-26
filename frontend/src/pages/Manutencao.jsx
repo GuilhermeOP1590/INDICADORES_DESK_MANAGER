@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { fetchManutencao, fetchManutencaoCausas, fetchSlaNivelDetalhe } from "../api.js";
 import { StatTile } from "../components/StatTile.jsx";
 import { SlaNiveisPanel } from "../components/SlaNiveisPanel.jsx";
@@ -133,6 +134,11 @@ export default function Manutencao() {
                   label="Condenado (laudo)"
                   value={detalhe.condenado}
                   statusClass={detalhe.condenado > 0 ? "status-critical" : undefined}
+                  meta={
+                    <Link to="/condenados" onClick={(e) => e.stopPropagation()}>
+                      Ver todos pendentes →
+                    </Link>
+                  }
                   onClick={() => drill.abrirLista({ ...filtroBase, status: STATUS_CONDENADO }, "Condenado (laudo)")}
                 />
                 {tipoAtivo === GERAL && detalhesAprovacao && (
