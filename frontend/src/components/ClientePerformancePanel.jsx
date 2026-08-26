@@ -3,9 +3,16 @@ import { StatTile } from "./StatTile.jsx";
 // Resume a tabela de clientes em alguns números que cabem numa olhada — mesmo racional do
 // TeamPerformanceCards, só que por cliente: quem gera mais demanda e quem está pior/melhor
 // em resolução, pra apontar onde vale a pena investigar primeiro.
-export function ClientePerformancePanel({ porCliente, onAbrirGeral, onAbrirCliente }) {
+export function ClientePerformancePanel({ porCliente, porUf, onAbrirGeral, onAbrirCliente }) {
   const clientes = (porCliente ?? []).filter((c) => c.cliente !== "Não informado");
   if (clientes.length === 0) return null;
+
+  // Resumo compacto por estado (hoje só MG/BA/SP na prática) — cabe como legenda pequena
+  // dentro do próprio tile de % médio, sem precisar de um painel novo só pra isso (já existe
+  // um painel cheio, RegiaoPerformancePanel, pra quem quiser o detalhe completo por UF).
+  const resumoPorUf = (porUf ?? [])
+    .filter((u) => u.uf !== "Não informado" && Number.isFinite(u.percentualResolucao))
+    .sort((a, b) => b.total - a.total);
 
   // Base é concluidos+abertos (= "avaliados"), não total — "Aguardando Aprovação" não pode
   // contar negativamente enquanto o orçamento não é avaliado (mesma regra do backend, ver
@@ -28,6 +35,17 @@ export function ClientePerformancePanel({ porCliente, onAbrirGeral, onAbrirClien
         <StatTile
           label="% de resolução médio"
           value={`${percentualMedio}%`}
+          meta={
+            resumoPorUf.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {resumoPorUf.map((u) => (
+                  <span key={u.uf}>
+                    {u.uf} {u.percentualResolucao}%
+                  </span>
+                ))}
+              </div>
+            ) : undefined
+          }
           statusClass={percentualMedio >= 80 ? "status-good" : undefined}
           onClick={onAbrirGeral}
         />

@@ -73,6 +73,7 @@ export default function Dashboard() {
   // percentualResolucao null = cliente sem nenhum chamado concluído ou aberto (só "Aguardando
   // Aprovação") — não dá pra ranquear como melhor nem pior sem nenhum dado avaliável.
   const porCliente = detalhe?.porCliente ?? [];
+  const porUf = detalhe?.porUf ?? [];
   const clientesComAmostra = porCliente.filter(
     (c) => c.cliente !== "Não informado" && c.total >= 3 && c.percentualResolucao !== null
   );
@@ -248,6 +249,7 @@ export default function Dashboard() {
 
           <ClientePerformancePanel
             porCliente={porCliente}
+            porUf={porUf}
             onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
             onAbrirCliente={(cliente) => drill.abrirLista({ ...filtroBase, cliente }, cliente, fetchDashboardChamados)}
           />
