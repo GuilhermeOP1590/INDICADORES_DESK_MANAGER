@@ -9,7 +9,13 @@ import {
   diasEmAberto,
 } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
-import { buildIndicadoresManutencao, buildIndicadoresEngenharia, listarPorCliente } from "../services/indicadoresPorTaxonomia.js";
+import {
+  buildIndicadoresManutencao,
+  buildIndicadoresEngenharia,
+  listarPorCliente,
+  buildCondenados,
+  STATUS_CONDENADO,
+} from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento, buildResumoRapidoOrcamento, foiReprovado } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
 import { fetchDetalheChamado } from "../services/chamadoDetalhe.js";
@@ -358,6 +364,26 @@ indicadoresRouter.get("/manutencao/causas", async (req, res) => {
   try {
     const chamadosManutencao = await chamadosDaEspecialidade(req, "Manutenção");
     res.json(await carregarCausas(chamadosManutencao));
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Sem parâmetro de período — o objetivo é nunca perder de vista um condenado antigo, então
+// olha o dataset inteiro carregado (mesmo cache de 5min de carregarChamadosEnriquecidos).
+// Filtra pelo status ANTES de buscar histórico: evita repetir a busca cara
+// (obterHistoricoEmLote) sobre milhares de chamados como Orçamento faz — aqui só os poucos
+// já condenados pagam esse custo.
+indicadoresRouter.get("/condenados", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    const semCancelados = excluirCancelados(chamados);
+    const condenados = semCancelados.filter((c) => c.NomeStatus === STATUS_CONDENADO);
+    const historicoMap = await obterHistoricoEmLote(condenados, { forceRefresh });
+
+    res.json(buildCondenados(condenados, historicoMap));
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
