@@ -1,4 +1,18 @@
 import { parseDateTime } from "./indicadores.js";
+import { foiReprovado } from "./orcamento.js";
+
+// Mesmo racional do Orçamento (ver foiReprovado em orcamento.js): o valor (R$) fica lançado na
+// interação mesmo se o orçamento for reprovado depois — sem separar por status, um chamado
+// negado (nunca gasto de verdade) inflava o "custo total" do equipamento igual um aprovado.
+function statusOrcamentoDoChamado(status) {
+  if (foiReprovado({ NomeStatus: status })) return "reprovado";
+  if (status === "Aguardando Aprovação") return "pendente";
+  return "aprovado";
+}
+
+function arredondar(valor) {
+  return Math.round(valor * 100) / 100;
+}
 
 // Agrupa chamados de Manutenção por Ic (equipamento específico do catálogo de Ativos do
 // DeskManager, ex: "300 - MTZ - Empilhadeira 06") — granularidade mais fina que "grupo de
@@ -41,7 +55,21 @@ export function buildPorIc(chamados, historicoMap) {
       const ordenados = [...lista].sort((a, b) => (a.dataCriacao ?? "").localeCompare(b.dataCriacao ?? ""));
       const preventiva = ordenados.filter((c) => c.tipo === "Preventiva").length;
       const corretiva = ordenados.filter((c) => c.tipo === "Corretiva").length;
-      const custoTotal = Math.round(ordenados.reduce((soma, c) => soma + (c.valorAprovacao ?? 0), 0) * 100) / 100;
+
+      // Custo separado em 3 baldes (aprovado/pendente/reprovado) — "quanto gasto de verdade",
+      // "quanto ainda depende de aprovação" e "quanto foi pedido e negado" são perguntas
+      // diferentes; somar tudo junto escondia o reprovado dentro do custo real do equipamento.
+      const somaPorStatus = { aprovado: 0, pendente: 0, reprovado: 0 };
+      for (const c of ordenados) {
+        somaPorStatus[statusOrcamentoDoChamado(c.status)] += c.valorAprovacao ?? 0;
+      }
+      const custoAprovado = arredondar(somaPorStatus.aprovado);
+      const custoPendente = arredondar(somaPorStatus.pendente);
+      const custoReprovado = arredondar(somaPorStatus.reprovado);
+      // custoTotal = exposição financeira real (gasto + ainda em aberto) — não inclui
+      // reprovado, mesmo racional do "Total em orçamento" da tela de Orçamento.
+      const custoTotal = arredondar(custoAprovado + custoPendente);
+
       const decomposicaoMttr = calcularDecomposicaoMttr(ordenados.filter((c) => c.tipo === "Corretiva"));
 
       return {
@@ -51,6 +79,9 @@ export function buildPorIc(chamados, historicoMap) {
         preventiva,
         corretiva,
         custoTotal,
+        custoAprovado,
+        custoPendente,
+        custoReprovado,
         recorrenciaDias: calcularRecorrenciaDias(ordenados.map((c) => c.dataCriacao).filter(Boolean)),
         mttfHoras: calcularMttfHoras(ordenados.filter((c) => c.tipo === "Corretiva")),
         mttrHoras: decomposicaoMttr?.mttrHoras ?? null,

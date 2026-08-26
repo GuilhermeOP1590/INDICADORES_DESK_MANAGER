@@ -65,6 +65,28 @@ test("buildPorIc soma custoTotal e conta preventiva/corretiva por tipo", () => {
   assert.equal(resultado.custoTotal, 150);
 });
 
+test("buildPorIc separa custo em aprovado/pendente/reprovado — reprovado não entra no custoTotal", () => {
+  const chamados = [
+    chamado({ Chave: 1, NomeStatus: "Resolvido" }),
+    chamado({ Chave: 2, NomeStatus: "Aguardando Aprovação" }),
+    chamado({ Chave: 3, NomeStatus: "Orçamento Reprovado" }),
+  ];
+  const historicoMap = new Map([
+    [1, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: 100 }],
+    [2, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: 200 }],
+    [3, { ics: ["Ic A"], horimetro: null, causa: null, valorAprovacao: 570 }],
+  ]);
+
+  const [resultado] = buildPorIc(chamados, historicoMap);
+  assert.equal(resultado.custoAprovado, 100);
+  assert.equal(resultado.custoPendente, 200);
+  assert.equal(resultado.custoReprovado, 570);
+  // custoTotal é a exposição financeira real (aprovado + pendente) — reprovado nunca foi
+  // gasto, então não pode aparecer aqui, senão o equipamento parece ter custado mais do que
+  // realmente custou.
+  assert.equal(resultado.custoTotal, 300);
+});
+
 test("buildPorIc calcula recorrenciaDias como o intervalo médio entre datas consecutivas", () => {
   const chamados = [
     chamado({ Chave: 1, DataCriacao: "2026-08-01" }),

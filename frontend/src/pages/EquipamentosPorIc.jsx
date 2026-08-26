@@ -37,7 +37,23 @@ function PerfilIc({ ic, onClose }) {
       <section className="stat-grid">
         <StatTile label="Total de chamados" value={ic.total} />
         <StatTile label="Cliente" value={ic.cliente ?? "Não identificado"} />
-        <StatTile label="Custo total" value={formatBRL(ic.custoTotal)} />
+        <StatTile
+          label="Custo aprovado"
+          value={formatBRL(ic.custoAprovado)}
+          statusClass="status-good"
+          meta="Gasto real — reprovado não conta aqui"
+        />
+        <StatTile
+          label="Pendente de aprovação"
+          value={formatBRL(ic.custoPendente)}
+          statusClass={ic.custoPendente > 0 ? "status-warning" : undefined}
+        />
+        <StatTile
+          label="Reprovado"
+          value={formatBRL(ic.custoReprovado)}
+          statusClass={ic.custoReprovado > 0 ? "status-critical" : undefined}
+          meta="Pedido e negado — não é gasto"
+        />
         <StatTile
           label="Recorrência média"
           value={ic.recorrenciaDias !== null ? `a cada ${ic.recorrenciaDias}d` : "poucos dados"}
@@ -165,8 +181,20 @@ export default function EquipamentosPorIc() {
         <>
           <section className="stat-grid">
             <StatTile
-              label="Custo total do período"
-              value={formatBRL(state.payload.ics.reduce((soma, ic) => soma + ic.custoTotal, 0))}
+              label="Custo aprovado do período"
+              value={formatBRL(state.payload.ics.reduce((soma, ic) => soma + ic.custoAprovado, 0))}
+              meta="Gasto real — reprovado não conta aqui"
+            />
+            <StatTile
+              label="Pendente de aprovação"
+              value={formatBRL(state.payload.ics.reduce((soma, ic) => soma + ic.custoPendente, 0))}
+              statusClass="status-warning"
+            />
+            <StatTile
+              label="Reprovado no período"
+              value={formatBRL(state.payload.ics.reduce((soma, ic) => soma + ic.custoReprovado, 0))}
+              statusClass="status-critical"
+              meta="Pedido e negado — não é gasto"
             />
             <StatTile label="Equipamentos com Ic identificado" value={state.payload.ics.length} />
             <StatTile label="Chamados com Ic" value={state.payload.totalComIc} />
@@ -223,7 +251,13 @@ export default function EquipamentosPorIc() {
                       valorBusca: (d) => d.cliente ?? "",
                       sortKeyName: "cliente",
                     },
-                    { header: "Custo total", render: (d) => formatBRL(d.custoTotal), sortKeyName: "custoTotal" },
+                    { header: "Custo aprovado", render: (d) => formatBRL(d.custoAprovado), sortKeyName: "custoAprovado" },
+                    { header: "Pendente", render: (d) => formatBRL(d.custoPendente), sortKeyName: "custoPendente" },
+                    {
+                      header: "Reprovado",
+                      render: (d) => (d.custoReprovado > 0 ? formatBRL(d.custoReprovado) : "—"),
+                      sortKeyName: "custoReprovado",
+                    },
                   ]}
                 />
               </div>
