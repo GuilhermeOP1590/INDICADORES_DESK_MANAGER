@@ -99,6 +99,32 @@ export default function Dashboard() {
     { header: "Em aberto", render: (d) => d.abertos, sortKeyName: "abertos" },
   ];
 
+  // Corretiva é o tipo que gera cobrança de loja (quebra, falha, retrabalho) — esses dois
+  // rankings ficam fixos em Corretiva mesmo quando a aba ativa é "Geral", em vez de seguir
+  // `detalhe`, senão o painel mudaria de significado a cada aba.
+  const porClienteCorretiva = (state.payload?.indicadores.porTipoDetalhe?.["Corretiva"]?.porCliente ?? []).filter(
+    (c) => c.cliente !== "Não informado"
+  );
+  const filtroCorretiva = { ...periodo, q: busca || undefined, uf: uf || undefined, tipo: "Corretiva" };
+
+  const corretivaVolumeData = [...porClienteCorretiva]
+    .sort((a, b) => b.total - a.total)
+    .map((c) => ({ label: c.cliente, total: c.total, abertos: c.abertos, concluidos: c.concluidos }));
+
+  const corretivaAbertosData = porClienteCorretiva
+    .filter((c) => c.abertos > 0)
+    .sort((a, b) => b.abertos - a.abertos)
+    .map((c) => ({ label: c.cliente, total: c.abertos, chamadosTotal: c.total, concluidos: c.concluidos }));
+
+  const COLUNAS_CORRETIVA_VOLUME = [
+    { header: "Em aberto", render: (d) => d.abertos, sortKeyName: "abertos" },
+    { header: "Concluídos", render: (d) => d.concluidos, sortKeyName: "concluidos" },
+  ];
+  const COLUNAS_CORRETIVA_ABERTOS = [
+    { header: "Total corretivas", render: (d) => d.chamadosTotal, sortKeyName: "chamadosTotal" },
+    { header: "Concluídos", render: (d) => d.concluidos, sortKeyName: "concluidos" },
+  ];
+
   return (
     <div>
       <div className="page-toolbar">
@@ -266,6 +292,34 @@ export default function Dashboard() {
 
             {tipoAtivo === GERAL && (
               <CausaPanel carregar={() => fetchIndicadoresCausas(filtroBase)} filtroBase={filtroBase} />
+            )}
+
+            {(tipoAtivo === GERAL || tipoAtivo === "Corretiva") && (
+              <>
+                <RankedClientePanel
+                  title="Lojas que mais abrem chamados corretivos"
+                  subtitle="Top 10 no período — clique pra ver todas as lojas e abrir os chamados"
+                  data={corretivaVolumeData}
+                  color="var(--series-1)"
+                  filtroBase={filtroCorretiva}
+                  ordemInicial="desc"
+                  fetcher={fetchDashboardChamados}
+                  colunasExtras={COLUNAS_CORRETIVA_VOLUME}
+                  nomeValor="Corretivas"
+                />
+
+                <RankedClientePanel
+                  title="Lojas com mais chamados corretivos em aberto"
+                  subtitle="Top 10 no período — backlog de corretiva por loja; clique pra ver todas e abrir os chamados"
+                  data={corretivaAbertosData}
+                  color="var(--status-critical)"
+                  filtroBase={{ ...filtroCorretiva, situacaoVolume: "aberto" }}
+                  ordemInicial="desc"
+                  fetcher={fetchDashboardChamados}
+                  colunasExtras={COLUNAS_CORRETIVA_ABERTOS}
+                  nomeValor="Em aberto"
+                />
+              </>
             )}
 
             <RankedClientePanel
