@@ -156,10 +156,10 @@ function buildPorUf(chamados) {
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
-// Aging do backlog: há quantos dias está parado o chamado em aberto mais antigo da loja.
-// Contagem de abertos sozinha não separa "10 chamados de ontem" de "3 parados há 60 dias",
-// e é o segundo caso que precisa de ação.
-function diasEmAberto(dataCriacao, hoje) {
+// Aging: há quantos dias um chamado está aberto (contando da criação até "hoje"). Usada tanto
+// aqui (pra achar o mais antigo por loja) quanto nas rotas de listagem (pra mostrar por
+// chamado individual, ex: na lista de backlog) — exportada pra não duplicar o cálculo.
+export function diasEmAberto(dataCriacao, hoje) {
   const criacao = parseDateTime(dataCriacao, "00:00:00");
   if (!criacao) return null;
   return Math.max(0, Math.floor((hoje.getTime() - criacao.getTime()) / MS_POR_DIA));

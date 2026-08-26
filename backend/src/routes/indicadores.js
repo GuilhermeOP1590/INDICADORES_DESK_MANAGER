@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { fetchChamados } from "../services/chamados.js";
-import { buildIndicadores, buildBacklog, buildPorCliente, isFinalizado, parseDateTime } from "../services/indicadores.js";
+import {
+  buildIndicadores,
+  buildBacklog,
+  buildPorCliente,
+  isFinalizado,
+  parseDateTime,
+  diasEmAberto,
+} from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia, listarPorCliente } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento, buildResumoRapidoOrcamento } from "../services/orcamento.js";
@@ -175,6 +182,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     }
 
     const config = lerConfiguracao();
+    const agora = new Date();
 
     res.json({
       total: filtrados.length,
@@ -182,6 +190,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
         const inicio = parseDateTime(c.DataCriacao, c.HoraCriacao);
         const fim = parseDateTime(c.DataFinalizacao, c.HoraFinalizacao);
         const tempoResolucaoHoras = inicio && fim ? Math.max(0, (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60)) : null;
+        const finalizado = isFinalizado(c);
 
         return {
           chave: c.Chave,
@@ -193,8 +202,8 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           slaNivel: c.slaNivel,
           dataCriacao: c.DataCriacao,
           horaCriacao: c.HoraCriacao,
-          dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
-          horaFinalizacao: isFinalizado(c) ? c.HoraFinalizacao : null,
+          dataFinalizacao: finalizado ? c.DataFinalizacao : null,
+          horaFinalizacao: finalizado ? c.HoraFinalizacao : null,
           cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null,
           solicitante: nomePorUsuario.get(c.ChaveUsuario) ?? null,
           uf: c.uf,
@@ -202,6 +211,9 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           tipo: c.tipo,
           operador: nomeOperador(c),
           tempoResolucaoHoras: situacaoVolume === "finalizado" ? tempoResolucaoHoras : undefined,
+          // Só faz sentido pra quem ainda não fechou — pra um chamado finalizado o que importa
+          // é tempoResolucaoHoras (quanto levou), não "há quanto tempo está aberto".
+          diasEmAberto: finalizado ? undefined : diasEmAberto(c.DataCriacao, agora),
         };
       }),
     });
@@ -559,26 +571,32 @@ indicadoresRouter.get("/chamados", async (req, res) => {
       });
     }
 
+    const agora = new Date();
+
     res.json({
       total: filtrados.length,
-      chamados: filtrados.map((c) => ({
-        chave: c.Chave,
-        codChamado: c.CodChamado,
-        assunto: c.Assunto,
-        status: c.NomeStatus,
-        situacao: classificarStatus(c.NomeStatus, config),
-        prioridade: c.NomePrioridade,
-        slaNivel: c.slaNivel,
-        dataCriacao: c.DataCriacao,
-        horaCriacao: c.HoraCriacao,
-        dataFinalizacao: isFinalizado(c) ? c.DataFinalizacao : null,
-        horaFinalizacao: isFinalizado(c) ? c.HoraFinalizacao : null,
-        cliente: c.cliente,
-        solicitante: c.solicitante ?? null,
-        uf: c.uf,
-        operador: nomeOperador(c),
-        valorAprovacao: historicoMap ? historicoMap.get(c.Chave)?.valorAprovacao ?? null : undefined,
-      })),
+      chamados: filtrados.map((c) => {
+        const finalizado = isFinalizado(c);
+        return {
+          chave: c.Chave,
+          codChamado: c.CodChamado,
+          assunto: c.Assunto,
+          status: c.NomeStatus,
+          situacao: classificarStatus(c.NomeStatus, config),
+          prioridade: c.NomePrioridade,
+          slaNivel: c.slaNivel,
+          dataCriacao: c.DataCriacao,
+          horaCriacao: c.HoraCriacao,
+          dataFinalizacao: finalizado ? c.DataFinalizacao : null,
+          horaFinalizacao: finalizado ? c.HoraFinalizacao : null,
+          cliente: c.cliente,
+          solicitante: c.solicitante ?? null,
+          uf: c.uf,
+          operador: nomeOperador(c),
+          valorAprovacao: historicoMap ? historicoMap.get(c.Chave)?.valorAprovacao ?? null : undefined,
+          diasEmAberto: finalizado ? undefined : diasEmAberto(c.DataCriacao, agora),
+        };
+      }),
     });
   } catch (error) {
     console.error(error);

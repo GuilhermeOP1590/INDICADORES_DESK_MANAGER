@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildIndicadores, buildPorCliente } from "./indicadores.js";
+import { buildIndicadores, buildPorCliente, diasEmAberto } from "./indicadores.js";
 
 // "Orçamento Reprovado" não está em nenhum dos 3 baldes configurados por padrão
 // (configuracaoIndicadores.js#PADRAO) — cai em "outro", que na UI de Configurações > Status é
@@ -70,4 +70,13 @@ test("buildPorCliente calcula diasMaisAntigoAberto a partir do chamado aberto ma
 
   const lojaB = resultado.find((c) => c.cliente === "Loja B");
   assert.equal(lojaB.diasMaisAntigoAberto, null);
+});
+
+test("diasEmAberto conta dias inteiros desde a criação até a data de referência", () => {
+  const hoje = new Date("2026-08-26T12:00:00");
+
+  assert.equal(diasEmAberto("2026-08-01", hoje), 25);
+  assert.equal(diasEmAberto("2026-08-26", hoje), 0);
+  assert.equal(diasEmAberto(null, hoje), null);
+  assert.equal(diasEmAberto("0000-00-00", hoje), null);
 });

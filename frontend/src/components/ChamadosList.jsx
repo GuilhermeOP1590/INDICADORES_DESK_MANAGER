@@ -62,6 +62,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
   const temTipo = tiposDisponiveis.length > 0;
   const temPrioridade = state.chamados.some((c) => c.prioridade !== undefined);
   const temSolicitante = state.chamados.some((c) => c.solicitante !== undefined);
+  const temDiasEmAberto = state.chamados.some((c) => c.diasEmAberto !== undefined);
 
   const chamadosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -96,6 +97,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
     { chave: "prioridade", titulo: "Prioridade" },
     { chave: "dataHora", titulo: "Data de criação" },
     { chave: "dataHoraFinalizacao", titulo: "Data de finalização" },
+    { chave: "diasEmAberto", titulo: "Aberto há (dias)" },
     { chave: "cliente", titulo: "Cliente" },
     { chave: "solicitante", titulo: "Solicitante" },
     { chave: "operador", titulo: "Operador" },
@@ -179,6 +181,16 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 sortDir={sortDir}
                 onSort={toggleSort}
               />
+              {temDiasEmAberto && (
+                <SortableTh
+                  label="Aberto há (dias)"
+                  sortKeyName="diasEmAberto"
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                  className="num"
+                />
+              )}
               <SortableTh label="Cliente" sortKeyName="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               {temSolicitante && (
                 <SortableTh label="Solicitante" sortKeyName="solicitante" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -227,6 +239,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                   {formatBR(c.dataCriacao)} {c.horaCriacao}
                 </td>
                 <td>{c.dataFinalizacao ? `${formatBR(c.dataFinalizacao)} ${c.horaFinalizacao}` : "—"}</td>
+                {temDiasEmAberto && <td className="num">{c.diasEmAberto ?? "—"}</td>}
                 <td>{c.cliente ?? "—"}</td>
                 {temSolicitante && <td>{c.solicitante ?? "—"}</td>}
                 {temArea && <td>{c.area ?? "—"}</td>}
