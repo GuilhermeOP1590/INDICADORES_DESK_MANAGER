@@ -1,6 +1,7 @@
 import { classificarStatus, lerConfiguracao } from "./configuracaoIndicadores.js";
 import { grupoDoEquipamento, lerConfiguracaoEquipamentos } from "./configuracaoEquipamentos.js";
 import { buildPorNivel } from "./slaNivel.js";
+import { diasEmAberto } from "./indicadores.js";
 
 function contarPor(chamados, keyFn) {
   const contagem = new Map();
@@ -128,6 +129,38 @@ export function listarPorCliente(chamados) {
 // técnico anexado) — precisa de card e filtro próprios, direto (não passa pelos 3 baldes de
 // classificarStatus, que são só sobre "resolvido/aberto/aguardando aprovação").
 export const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
+
+// Lista "achatada" de condenados pendentes — usada pela página /condenados, que não tem
+// filtro de período (o objetivo é nunca perder de vista um condenado antigo). Ordena do mais
+// parado pro mais recente: quem está esperando tratamento há mais tempo aparece primeiro.
+export function buildCondenados(chamados, historicoMap, { hoje = new Date() } = {}) {
+  const condenados = chamados.filter((c) => c.NomeStatus === STATUS_CONDENADO);
+
+  const itens = condenados
+    .map((c) => {
+      const historico = historicoMap.get(c.Chave);
+      return {
+        chave: c.Chave,
+        codChamado: c.CodChamado,
+        assunto: c.Assunto,
+        cliente: c.cliente ?? null,
+        especialidade: c.especialidade ?? null,
+        uf: c.uf ?? null,
+        operador: [c.NomeOperador, c.SobrenomeOperador].filter(Boolean).join(" ") || "Sem operador",
+        dataCriacao: c.DataCriacao,
+        diasParado: diasEmAberto(c.DataCriacao, hoje),
+        causa: historico?.causa ?? null,
+        ics: historico?.ics ?? [],
+      };
+    })
+    .sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
+
+  return {
+    total: itens.length,
+    diasParadoMaisAntigo: itens[0]?.diasParado ?? null,
+    itens,
+  };
+}
 
 // porCausa e aguardandoAprovacao.jaAvaliados só existem quando o chamado foi enriquecido
 // com histórico de interações (campo `causa`/`passouPorAguardandoAprovacao`) — ver historicoChamado.js.

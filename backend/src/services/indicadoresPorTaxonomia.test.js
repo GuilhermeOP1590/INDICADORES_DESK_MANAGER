@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { agruparEquipamentos, buildIndicadoresManutencao, buildIndicadoresEngenharia } from "./indicadoresPorTaxonomia.js";
+import { agruparEquipamentos, buildIndicadoresManutencao, buildIndicadoresEngenharia, buildCondenados } from "./indicadoresPorTaxonomia.js";
 
 const CONFIG_TESTE = {
   grupos: ["Movimentação", "Refrigeração"],
@@ -88,4 +88,72 @@ test("buildIndicadoresManutencao conta condenados (status 'Condenado e Laudo Ane
   assert.equal(resultado.porTipoDetalhe["Corretiva"].condenado, 1);
   assert.equal(resultado.porTipoDetalhe["Preventiva"].condenado, 1);
   assert.equal(resultado.porTipoDetalhe["Rotina"].condenado, 0);
+});
+
+test("buildCondenados filtra pelo status, calcula diasParado e junta causa/ics do histórico", () => {
+  const chamados = [
+    {
+      Chave: 1,
+      CodChamado: "0826-000001",
+      Assunto: "Empilhadeira quebrada",
+      cliente: "Loja A",
+      especialidade: "Manutenção",
+      uf: "MG",
+      NomeOperador: "Ana",
+      SobrenomeOperador: "Silva",
+      DataCriacao: "2026-08-01",
+      NomeStatus: "Condenado e Laudo Anexo (Atenção)",
+    },
+    {
+      Chave: 2,
+      CodChamado: "0826-000002",
+      Assunto: "Poste danificado",
+      cliente: "Loja B",
+      especialidade: "Engenharia",
+      uf: "BA",
+      NomeOperador: null,
+      SobrenomeOperador: null,
+      DataCriacao: "2026-08-20",
+      NomeStatus: "Condenado e Laudo Anexo (Atenção)",
+    },
+    {
+      Chave: 3,
+      CodChamado: "0826-000003",
+      Assunto: "Outro chamado, não condenado",
+      cliente: "Loja C",
+      especialidade: "Manutenção",
+      uf: "MG",
+      DataCriacao: "2026-08-01",
+      NomeStatus: "Resolvido",
+    },
+  ];
+  const historicoMap = new Map([[1, { causa: "Desgaste Natural", ics: ["25 - Empilhadeira 02"] }]]);
+
+  const resultado = buildCondenados(chamados, historicoMap, { hoje: new Date("2026-08-26T12:00:00") });
+
+  assert.equal(resultado.total, 2);
+  assert.equal(resultado.diasParadoMaisAntigo, 25);
+  assert.deepEqual(
+    resultado.itens.map((i) => i.codChamado),
+    ["0826-000001", "0826-000002"]
+  );
+
+  const item1 = resultado.itens[0];
+  assert.equal(item1.diasParado, 25);
+  assert.equal(item1.causa, "Desgaste Natural");
+  assert.deepEqual(item1.ics, ["25 - Empilhadeira 02"]);
+  assert.equal(item1.operador, "Ana Silva");
+  assert.equal(item1.cliente, "Loja A");
+  assert.equal(item1.especialidade, "Manutenção");
+
+  const item2 = resultado.itens[1];
+  assert.equal(item2.diasParado, 6);
+  assert.equal(item2.causa, null);
+  assert.deepEqual(item2.ics, []);
+  assert.equal(item2.operador, "Sem operador");
+});
+
+test("buildCondenados retorna total 0 e diasParadoMaisAntigo null sem nenhum condenado", () => {
+  const resultado = buildCondenados([{ NomeStatus: "Resolvido" }], new Map());
+  assert.deepEqual(resultado, { total: 0, diasParadoMaisAntigo: null, itens: [] });
 });
