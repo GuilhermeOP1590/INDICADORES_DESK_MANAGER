@@ -368,7 +368,11 @@ body {
   border-radius: 12px;
   border: 1px solid var(--border);
   width: 100%;
-  max-width: 900px;
+  /* Tabelas de chamados chegaram a ~13 colunas (Solicitante entrou depois) — 900px forçava
+     rolagem horizontal mesmo em telas largas. 96vw deixa uma folga de respiro nas bordas em
+     qualquer tamanho de tela; o teto de 1600px evita uma tabela de 3 colunas esticar até virar
+     uma faixa fina e ilegível num monitor ultrawide. */
+  max-width: min(1600px, 96vw);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
