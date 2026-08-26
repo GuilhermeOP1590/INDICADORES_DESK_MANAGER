@@ -118,6 +118,10 @@ export function fetchPrioritarios() {
   return getJson("/api/prioritarios", {});
 }
 
+export function fetchCondenados(opts) {
+  return getJson("/api/condenados", opts ?? {});
+}
+
 export async function adicionarPrioridade(codChamado, nota) {
   const response = await fetch("/api/prioritarios", {
     method: "POST",
