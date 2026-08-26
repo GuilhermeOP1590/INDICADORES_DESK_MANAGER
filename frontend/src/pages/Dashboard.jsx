@@ -76,12 +76,28 @@ export default function Dashboard() {
   const clientesComAmostra = porCliente.filter(
     (c) => c.cliente !== "Não informado" && c.total >= 3 && c.percentualResolucao !== null
   );
+  // `total` é o valor da barra (o percentual); os números brutos vão em campos próprios pra
+  // aparecerem como colunas na tabela do modal — sem eles um "100%" de 3 chamados fica
+  // indistinguível de um "100%" de 300.
+  const paraLinhaResolucao = (c) => ({
+    label: c.cliente,
+    total: c.percentualResolucao,
+    chamadosTotal: c.total,
+    concluidos: c.concluidos,
+    abertos: c.abertos,
+  });
   const melhorResolucaoClienteData = [...clientesComAmostra]
     .sort((a, b) => (b.percentualResolucao ?? 0) - (a.percentualResolucao ?? 0))
-    .map((c) => ({ label: c.cliente, total: c.percentualResolucao }));
+    .map(paraLinhaResolucao);
   const piorResolucaoClienteData = [...clientesComAmostra]
     .sort((a, b) => (a.percentualResolucao ?? 0) - (b.percentualResolucao ?? 0))
-    .map((c) => ({ label: c.cliente, total: c.percentualResolucao }));
+    .map(paraLinhaResolucao);
+
+  const COLUNAS_RESOLUCAO = [
+    { header: "Total", render: (d) => d.chamadosTotal, sortKeyName: "chamadosTotal" },
+    { header: "Concluídos", render: (d) => d.concluidos, sortKeyName: "concluidos" },
+    { header: "Em aberto", render: (d) => d.abertos, sortKeyName: "abertos" },
+  ];
 
   return (
     <div>
@@ -261,6 +277,7 @@ export default function Dashboard() {
               formatValue={formatPct}
               ordemInicial="desc"
               fetcher={fetchDashboardChamados}
+              colunasExtras={COLUNAS_RESOLUCAO}
             />
 
             <RankedClientePanel
@@ -272,6 +289,7 @@ export default function Dashboard() {
               formatValue={formatPct}
               ordemInicial="asc"
               fetcher={fetchDashboardChamados}
+              colunasExtras={COLUNAS_RESOLUCAO}
             />
           </section>
         </>

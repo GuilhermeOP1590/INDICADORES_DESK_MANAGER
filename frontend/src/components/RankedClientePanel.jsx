@@ -25,6 +25,9 @@ export function RankedClientePanel({
   fetcher,
   tipoFiltro,
   onTipoFiltroChange,
+  colunasExtras = [],
+  nomeColuna = "Cliente",
+  nomeValor = "% Resolução",
 }) {
   const drill = useDrillDown();
   const top10 = data.slice(0, TOP_N);
@@ -82,9 +85,10 @@ export function RankedClientePanel({
             <RankingTable
               data={data}
               formatValue={formatValue}
-              nomeColuna="Cliente"
-              nomeValor="% Resolução"
+              nomeColuna={nomeColuna}
+              nomeValor={nomeValor}
               ordemInicial={ordemInicial}
+              colunasExtras={colunasExtras}
               onSelecionar={(label) => drill.abrirLista({ ...filtroBase, cliente: label }, label, fetcher)}
             />
           )}
