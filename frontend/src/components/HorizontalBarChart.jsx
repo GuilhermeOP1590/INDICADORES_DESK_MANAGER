@@ -1,5 +1,30 @@
 import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
+// ~6.3px por caractere é uma estimativa segura pra fontSize 12 nesse tema (fonte padrão do
+// navegador) — o Recharts padrão quebraria o rótulo em várias linhas quando ele não cabe em
+// `width`, e como cada barra só tem ~32px de altura, o texto quebrado invade a linha vizinha
+// (nomes de loja longos tipo "SUPPLY DISTRIBUIDORA..." colidiam com a barra de cima/baixo).
+// Truncar com reticências evita a quebra; o nome completo continua acessível via <title>
+// (tooltip nativo do navegador ao passar o mouse no rótulo).
+const PX_POR_CARACTERE = 6.3;
+
+function truncarRotulo(texto, largura) {
+  const maxChars = Math.max(4, Math.floor((largura - 8) / PX_POR_CARACTERE));
+  if (!texto || texto.length <= maxChars) return texto;
+  return `${texto.slice(0, maxChars - 1)}…`;
+}
+
+function criarTickEixoY(largura) {
+  return function TickEixoY({ x, y, payload }) {
+    return (
+      <text x={x} y={y} dy={4} textAnchor="end" fontSize={12} fill="var(--text-secondary)">
+        <title>{payload.value}</title>
+        {truncarRotulo(payload.value, largura)}
+      </text>
+    );
+  };
+}
+
 // Somar só faz sentido pra valores aditivos (contagem, R$). Uma taxa/percentual (ex: % de
 // resolução) não pode virar "Outros (agregado): 670%" — nesse caso só corta o excedente
 // sem fingir um total (ver agregarOutros abaixo).
@@ -39,7 +64,7 @@ export function HorizontalBarChart({
           type="category"
           dataKey="label"
           width={yAxisWidth}
-          tick={{ fill: "var(--text-secondary)", fontSize: 12 }}
+          tick={criarTickEixoY(yAxisWidth)}
           axisLine={{ stroke: "var(--baseline)" }}
           tickLine={false}
         />
