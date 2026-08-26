@@ -67,6 +67,11 @@ export function HorizontalBarChart({
           tick={criarTickEixoY(yAxisWidth)}
           axisLine={{ stroke: "var(--baseline)" }}
           tickLine={false}
+          // Com um tick customizado o Recharts não consegue medir o rótulo renderizado pra
+          // decidir sozinho quais ticks caberiam sem sobrepor — sem isso ele passa a pular
+          // rótulo sim, rótulo não (a barra fica, só o nome some). interval=0 força mostrar
+          // todas; a truncagem do tick já garante que não vão colidir.
+          interval={0}
         />
         <Tooltip
           cursor={{ fill: "var(--gridline)" }}
