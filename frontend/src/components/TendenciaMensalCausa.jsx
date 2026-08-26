@@ -9,39 +9,69 @@ import { periodoMesFiscal, periodoDoPontoDaSerie } from "../lib/datas.js";
 
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+// Mesma paleta do DonutChart — 8 cores dá conta das causas mais comuns (na prática 4-6 por
+// período); com mais de 8 causas a cor recicla, mas o essencial (comparar as top causas mês a
+// mês) continua legível.
+const PALETA = [
+  "var(--series-1)",
+  "var(--series-2)",
+  "var(--series-3)",
+  "var(--series-4)",
+  "var(--series-5)",
+  "var(--series-6)",
+  "var(--series-7)",
+  "var(--series-8)",
+];
+
+// Empilhado por mês (uma cor por causa) em vez de "escolha 1 causa no dropdown" — dá pra
+// comparar todas as causas E ver a evolução mês a mês na mesma imagem, sem precisar trocar de
+// seleção pra notar que uma causa está crescendo enquanto outra cai.
 export function TendenciaMensalCausa({ especialidade }) {
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [state, setState] = useState({ status: "idle", payload: null, error: null });
-  const [causaSelecionada, setCausaSelecionada] = useState("");
   const drill = useDrillDown();
 
   async function calcular() {
     setState((s) => ({ ...s, status: "loading" }));
     try {
       const payload = await fetchTendenciaMensalCausa({ ...periodo, especialidade });
-      const maiorCausa = [...payload.causas]
-        .map((causa) => ({ causa, total: payload.porMes.filter((m) => m.causa === causa).reduce((s, m) => s + m.valor, 0) }))
-        .sort((a, b) => b.total - a.total)[0]?.causa;
       setState({ status: "ready", payload, error: null });
-      setCausaSelecionada(maiorCausa ?? "");
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
     }
   }
 
-  const dadosDaCausa = useMemo(() => {
-    if (!state.payload || !causaSelecionada) return [];
-    return state.payload.porMes
-      .filter((m) => m.causa === causaSelecionada)
-      .map((m) => ({ mes: m.mes, valor: m.valor, total: m.total }));
-  }, [state.payload, causaSelecionada]);
+  // Ordena as causas por valor total do período (maior primeiro) — tanto a ordem das séries
+  // empilhadas (a mais relevante fica na base, mais fácil de comparar entre meses) quanto a
+  // ordem da legenda seguem essa relevância, em vez da ordem alfabética que o backend devolve.
+  const causasPorRelevancia = useMemo(() => {
+    if (!state.payload) return [];
+    const totalPorCausa = new Map(state.payload.causas.map((c) => [c, 0]));
+    for (const m of state.payload.porMes) {
+      totalPorCausa.set(m.causa, (totalPorCausa.get(m.causa) ?? 0) + m.valor);
+    }
+    return [...state.payload.causas].sort((a, b) => (totalPorCausa.get(b) ?? 0) - (totalPorCausa.get(a) ?? 0));
+  }, [state.payload]);
 
-  function abrirMes(mes) {
+  const dadosPorMes = useMemo(() => {
+    if (!state.payload) return [];
+    const porMesMap = new Map();
+    for (const m of state.payload.porMes) {
+      const linha = porMesMap.get(m.mes) ?? { mes: m.mes };
+      linha[m.causa] = m.valor;
+      porMesMap.set(m.mes, linha);
+    }
+    return [...porMesMap.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+  }, [state.payload]);
+
+  const series = useMemo(
+    () => causasPorRelevancia.map((causa, index) => ({ dataKey: causa, name: causa, color: PALETA[index % PALETA.length] })),
+    [causasPorRelevancia]
+  );
+
+  function abrirMes(mes, causa) {
     const { dataInicio, dataFim, titulo } = periodoDoPontoDaSerie(mes, "mes");
-    drill.abrirLista(
-      { causa: causaSelecionada, statusAprovacao: "avaliado", dataInicio, dataFim },
-      `${titulo} — ${causaSelecionada}`
-    );
+    drill.abrirLista({ causa, statusAprovacao: "avaliado", dataInicio, dataFim }, `${titulo} — ${causa}`);
   }
 
   return (
@@ -50,8 +80,8 @@ export function TendenciaMensalCausa({ especialidade }) {
         <div>
           <h2 style={{ margin: 0, fontSize: 16 }}>Valor aprovado por mês, por causa</h2>
           <p className="subtitle">
-            Escolha uma causa e veja a evolução mês a mês do valor aprovado — busca o histórico de cada
-            chamado do período, pode levar um tempo.
+            Cada cor é uma causa, empilhada por mês — busca o histórico de cada chamado do período, pode levar um tempo.
+            Clique num segmento pra ver os chamados daquele mês/causa.
           </p>
         </div>
         <DateFilterBar periodo={periodo} onChange={setPeriodo} />
@@ -69,26 +99,10 @@ export function TendenciaMensalCausa({ especialidade }) {
       {state.payload && state.payload.causas.length > 0 && (
         <>
           <div className="filter-bar">
-            <select value={causaSelecionada} onChange={(e) => setCausaSelecionada(e.target.value)}>
-              {state.payload.causas.map((causa) => (
-                <option key={causa} value={causa}>
-                  {causa}
-                </option>
-              ))}
-            </select>
             <span className="meta">{state.payload.totalAvaliados} chamados avaliados no período</span>
           </div>
 
-          {dadosDaCausa.length === 0 ? (
-            <p className="subtitle">Nenhum valor aprovado pra essa causa nesse período.</p>
-          ) : (
-            <MonthlyBarChart
-              data={dadosDaCausa}
-              series={[{ dataKey: "valor", name: causaSelecionada, color: "var(--series-5)" }]}
-              formatValue={formatBRL}
-              onBarClick={abrirMes}
-            />
-          )}
+          <MonthlyBarChart data={dadosPorMes} series={series} formatValue={formatBRL} onBarClick={abrirMes} stacked height={320} />
         </>
       )}
 
