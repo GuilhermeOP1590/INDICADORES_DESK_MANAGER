@@ -61,6 +61,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
   const temArea = state.chamados.some((c) => c.area !== undefined);
   const temTipo = tiposDisponiveis.length > 0;
   const temPrioridade = state.chamados.some((c) => c.prioridade !== undefined);
+  const temSolicitante = state.chamados.some((c) => c.solicitante !== undefined);
 
   const chamadosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -70,7 +71,13 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
         if (situacao && c.situacao !== situacao) return false;
         if (area && c.area !== area) return false;
         if (tipo && c.tipo !== tipo) return false;
-        if (termo && !c.assunto.toLowerCase().includes(termo) && !c.codChamado.toLowerCase().includes(termo)) return false;
+        if (
+          termo &&
+          !c.assunto.toLowerCase().includes(termo) &&
+          !c.codChamado.toLowerCase().includes(termo) &&
+          !(c.solicitante ?? "").toLowerCase().includes(termo)
+        )
+          return false;
         return true;
       })
       .map((c) => ({
@@ -90,6 +97,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
     { chave: "dataHora", titulo: "Data de criação" },
     { chave: "dataHoraFinalizacao", titulo: "Data de finalização" },
     { chave: "cliente", titulo: "Cliente" },
+    { chave: "solicitante", titulo: "Solicitante" },
     { chave: "operador", titulo: "Operador" },
   ];
 
@@ -102,7 +110,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
       <div className="filter-bar">
         <input
           type="text"
-          placeholder="Buscar por assunto ou código..."
+          placeholder="Buscar por assunto, código ou solicitante..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           className="search-input"
@@ -172,6 +180,9 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 onSort={toggleSort}
               />
               <SortableTh label="Cliente" sortKeyName="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              {temSolicitante && (
+                <SortableTh label="Solicitante" sortKeyName="solicitante" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              )}
               {temArea && <SortableTh label="Área" sortKeyName="area" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />}
               {temTipo && <SortableTh label="Tipo" sortKeyName="tipo" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />}
               <SortableTh label="Operador" sortKeyName="operador" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
@@ -217,6 +228,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 </td>
                 <td>{c.dataFinalizacao ? `${formatBR(c.dataFinalizacao)} ${c.horaFinalizacao}` : "—"}</td>
                 <td>{c.cliente ?? "—"}</td>
+                {temSolicitante && <td>{c.solicitante ?? "—"}</td>}
                 {temArea && <td>{c.area ?? "—"}</td>}
                 {temTipo && <td>{c.tipo ?? "—"}</td>}
                 <td>{c.operador}</td>
