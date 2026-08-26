@@ -109,20 +109,43 @@ export default function Dashboard() {
 
   const corretivaVolumeData = [...porClienteCorretiva]
     .sort((a, b) => b.total - a.total)
-    .map((c) => ({ label: c.cliente, total: c.total, abertos: c.abertos, concluidos: c.concluidos }));
+    .map((c) => ({
+      label: c.cliente,
+      total: c.total,
+      abertos: c.abertos,
+      concluidos: c.concluidos,
+      diasMaisAntigoAberto: c.diasMaisAntigoAberto,
+    }));
 
   const corretivaAbertosData = porClienteCorretiva
     .filter((c) => c.abertos > 0)
     .sort((a, b) => b.abertos - a.abertos)
-    .map((c) => ({ label: c.cliente, total: c.abertos, chamadosTotal: c.total, concluidos: c.concluidos }));
+    .map((c) => ({
+      label: c.cliente,
+      total: c.abertos,
+      chamadosTotal: c.total,
+      concluidos: c.concluidos,
+      diasMaisAntigoAberto: c.diasMaisAntigoAberto,
+    }));
+
+  // O backlog só vira ação quando se sabe há quanto tempo o chamado mais antigo está parado:
+  // "3 abertos há 60 dias" é bem mais grave que "10 abertos ontem". Fica em coluna própria
+  // (e não na barra) porque a barra continua sendo contagem de chamados.
+  const COLUNA_AGING = {
+    header: "Aberto há (dias)",
+    render: (d) => (d.diasMaisAntigoAberto === null || d.diasMaisAntigoAberto === undefined ? "—" : d.diasMaisAntigoAberto),
+    sortKeyName: "diasMaisAntigoAberto",
+  };
 
   const COLUNAS_CORRETIVA_VOLUME = [
     { header: "Em aberto", render: (d) => d.abertos, sortKeyName: "abertos" },
     { header: "Concluídos", render: (d) => d.concluidos, sortKeyName: "concluidos" },
+    COLUNA_AGING,
   ];
   const COLUNAS_CORRETIVA_ABERTOS = [
     { header: "Total corretivas", render: (d) => d.chamadosTotal, sortKeyName: "chamadosTotal" },
     { header: "Concluídos", render: (d) => d.concluidos, sortKeyName: "concluidos" },
+    COLUNA_AGING,
   ];
 
   return (
