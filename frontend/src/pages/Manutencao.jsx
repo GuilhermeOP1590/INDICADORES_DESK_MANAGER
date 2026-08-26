@@ -128,10 +128,19 @@ export default function Manutencao() {
                 />
                 {tipoAtivo === GERAL && detalhesAprovacao && (
                   <StatTile
-                    label="Já avaliados"
+                    label="Aprovados"
                     value={detalhesAprovacao.jaAvaliados}
                     meta={formatBRL(detalhesAprovacao.valorAvaliado)}
-                    onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "avaliado" }, "Já avaliados")}
+                    onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "avaliado" }, "Aprovados")}
+                  />
+                )}
+                {tipoAtivo === GERAL && detalhesAprovacao && detalhesAprovacao.jaReprovados > 0 && (
+                  <StatTile
+                    label="Reprovados"
+                    value={detalhesAprovacao.jaReprovados}
+                    statusClass="status-critical"
+                    meta={formatBRL(detalhesAprovacao.valorReprovado)}
+                    onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "reprovado" }, "Reprovados")}
                   />
                 )}
               </section>

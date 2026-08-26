@@ -105,7 +105,7 @@ export default function Orcamento() {
     payload && payload.aguardando.valor + payload.avaliados.valor > 0
       ? [
           { label: "Aguardando Aprovação", total: payload.aguardando.valor },
-          { label: "Já avaliados", total: payload.avaliados.valor },
+          { label: "Aprovados", total: payload.avaliados.valor },
         ]
       : null;
 
@@ -178,15 +178,22 @@ export default function Orcamento() {
               onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "aguardando" }, "Aguardando Aprovação")}
             />
             <StatTile
-              label="Já avaliados"
+              label="Aprovados"
               value={payload.avaliados.total}
               meta={formatBRL(payload.avaliados.valor)}
-              onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "avaliado" }, "Já avaliados")}
+              onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "avaliado" }, "Aprovados")}
+            />
+            <StatTile
+              label="Reprovados"
+              value={payload.reprovados.total}
+              statusClass={payload.reprovados.total > 0 ? "status-critical" : undefined}
+              meta={formatBRL(payload.reprovados.valor)}
+              onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "reprovado" }, "Reprovados")}
             />
             <StatTile
               label="Total em orçamento"
               value={formatBRL(payload.aguardando.valor + payload.avaliados.valor)}
-              meta={`${payload.aguardando.total + payload.avaliados.total} chamados com valor registrado`}
+              meta={`${payload.aguardando.total + payload.avaliados.total} chamados com valor registrado — não inclui reprovados`}
             />
           </section>
 

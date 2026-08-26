@@ -1,3 +1,12 @@
+// O valor (_8575) é lançado na interação em que o técnico PEDE aprovação — continua lá mesmo
+// se o aprovador rejeitar o pedido depois. Sem essa checagem, um orçamento reprovado (negado,
+// nunca gasto) somava junto com os aprovados em toda soma de "valor aprovado"/custo.
+const STATUS_ORCAMENTO_REPROVADO = "Orçamento Reprovado";
+
+export function foiReprovado(chamado) {
+  return chamado.NomeStatus === STATUS_ORCAMENTO_REPROVADO;
+}
+
 function valorDe(historicoMap, chamado) {
   return historicoMap.get(chamado.Chave)?.valorAprovacao ?? 0;
 }
@@ -93,14 +102,19 @@ export function buildResumoRapidoOrcamento(chamados) {
 
 export function buildOrcamento(chamados, historicoMap) {
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
-  const avaliados = chamados.filter(
+  const avaliadosBrutos = chamados.filter(
     (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
   );
+  // "avaliados" = passou pela aprovação E foi aceito. Reprovado é um bucket à parte — não some
+  // do payload, só não entra em nenhuma soma que representa dinheiro aprovado/gasto.
+  const avaliados = avaliadosBrutos.filter((c) => !foiReprovado(c));
+  const reprovados = avaliadosBrutos.filter(foiReprovado);
 
   return {
     totalChamados: chamados.length,
     aguardando: { total: aguardando.length, valor: somarValor(aguardando, historicoMap) },
     avaliados: { total: avaliados.length, valor: somarValor(avaliados, historicoMap) },
+    reprovados: { total: reprovados.length, valor: somarValor(reprovados, historicoMap) },
     // causa só existe pra chamado já resolvido (registrada no fechamento) — fica avaliados-only.
     // tipo/tipoAtividade é taxonomia definida na criação do chamado, então existe pra aguardando
     // também. Engenharia não usa "tipo" (é sempre Corretiva) — o classificador real de Engenharia

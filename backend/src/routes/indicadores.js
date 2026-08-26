@@ -10,7 +10,7 @@ import {
 } from "../services/indicadores.js";
 import { carregarChamadosEnriquecidos, anexarUf, anexarArea, anexarSlaNivel, CLIENTE_FICTICIO } from "../services/enriquecimento.js";
 import { buildIndicadoresManutencao, buildIndicadoresEngenharia, listarPorCliente } from "../services/indicadoresPorTaxonomia.js";
-import { buildOrcamento, buildResumoRapidoOrcamento } from "../services/orcamento.js";
+import { buildOrcamento, buildResumoRapidoOrcamento, foiReprovado } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
 import { fetchDetalheChamado } from "../services/chamadoDetalhe.js";
 import { obterHistoricoEmLote } from "../services/historicoChamado.js";
@@ -84,9 +84,13 @@ async function carregarCausas(chamados) {
   const porCausa = [...contagem.entries()].map(([label, total]) => ({ label, total })).sort((a, b) => b.total - a.total);
 
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
-  const avaliados = chamados.filter(
+  const avaliadosBrutos = chamados.filter(
     (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
   );
+  // Reprovado passou pela aprovação mas o valor foi negado — não é "avaliado" pra fins de
+  // custo (ver foiReprovado em orcamento.js), fica separado em jaReprovados/valorReprovado.
+  const avaliados = avaliadosBrutos.filter((c) => !foiReprovado(c));
+  const reprovados = avaliadosBrutos.filter(foiReprovado);
 
   const somarValor = (lista) =>
     lista.reduce((soma, c) => soma + (historicoMap.get(c.Chave)?.valorAprovacao ?? 0), 0);
@@ -94,8 +98,10 @@ async function carregarCausas(chamados) {
   return {
     porCausa,
     jaAvaliados: avaliados.length,
+    jaReprovados: reprovados.length,
     valorAguardando: Math.round(somarValor(aguardando) * 100) / 100,
     valorAvaliado: Math.round(somarValor(avaliados) * 100) / 100,
+    valorReprovado: Math.round(somarValor(reprovados) * 100) / 100,
   };
 }
 
@@ -559,10 +565,15 @@ indicadoresRouter.get("/chamados", async (req, res) => {
         const historico = historicoMap.get(c.Chave) || {};
         if (causa && historico.causa !== causa) return false;
         if (foraDoTopoCausa && foraDoTopoCausa.has(historico.causa)) return false;
-        const ehAvaliado = historico.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação";
+        // "Avaliado" = passou pela aprovação E foi aceito. Reprovado (valor pedido e negado)
+        // é um bucket à parte — ver foiReprovado em orcamento.js.
+        const passouAprovacao = historico.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação";
+        const ehReprovado = passouAprovacao && foiReprovado(c);
+        const ehAvaliado = passouAprovacao && !ehReprovado;
         const ehAguardando = c.NomeStatus === "Aguardando Aprovação";
         if (statusAprovacao === "aguardando" && !ehAguardando) return false;
         if (statusAprovacao === "avaliado" && !ehAvaliado) return false;
+        if (statusAprovacao === "reprovado" && !ehReprovado) return false;
         // "comOrcamento" = pendente OU já avaliado — usado pelo drill de "Custo por unidade",
         // que soma os dois grupos; sem isso o clique numa barra mostrava TODOS os chamados
         // daquele cliente, não só os que compõem o valor exibido.
@@ -913,8 +924,9 @@ indicadoresRouter.get("/orcamento/tendencia-mensal-causa", async (req, res) => {
     }
 
     const historicoMap = await obterHistoricoEmLote(noPeriodo);
+    // Reprovado não é "avaliado" pra fins de valor — ver foiReprovado em orcamento.js.
     const avaliados = noPeriodo.filter(
-      (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
+      (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação" && !foiReprovado(c)
     );
     const tendencia = buildTendenciaMensalPorCausa(avaliados, historicoMap);
 
