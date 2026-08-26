@@ -19,6 +19,9 @@ import { TendenciaMensalManutencao } from "../components/TendenciaMensalManutenc
 
 const GERAL = "__geral__";
 const TIPOS = ["Preventiva", "Corretiva", "Rotina", "Segurança", "Outros/Não classificado"];
+// Status real do Desk pra equipamento avaliado e reprovado pra uso, com laudo técnico anexado
+// — precisa de filtro fácil e direto, não só aparecer misturado em "Chamados por status".
+const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const COR_POR_TIPO = {
   [GERAL]: "var(--series-1)",
@@ -125,6 +128,12 @@ export default function Manutencao() {
                   statusClass="status-warning"
                   meta={tipoAtivo === GERAL && detalhesAprovacao ? formatBRL(detalhesAprovacao.valorAguardando) : undefined}
                   onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "aguardando" }, "Aguardando Aprovação")}
+                />
+                <StatTile
+                  label="Condenado (laudo)"
+                  value={detalhe.condenado}
+                  statusClass={detalhe.condenado > 0 ? "status-critical" : undefined}
+                  onClick={() => drill.abrirLista({ ...filtroBase, status: STATUS_CONDENADO }, "Condenado (laudo)")}
                 />
                 {tipoAtivo === GERAL && detalhesAprovacao && (
                   <StatTile

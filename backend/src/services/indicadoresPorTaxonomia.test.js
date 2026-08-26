@@ -74,3 +74,18 @@ test("buildIndicadoresManutencao exclui status 'outro' de abertos/concluidos em 
   const cliente = resultado.geral.porClienteDetalhado.find((c) => c.cliente === "Loja A");
   assert.equal(cliente.abertos, 0);
 });
+
+test("buildIndicadoresManutencao conta condenados (status 'Condenado e Laudo Anexo (Atenção)') em geral e por tipo", () => {
+  const chamados = [
+    { tipo: "Corretiva", NomeStatus: "Condenado e Laudo Anexo (Atenção)" },
+    { tipo: "Corretiva", NomeStatus: "Resolvido" },
+    { tipo: "Preventiva", NomeStatus: "Condenado e Laudo Anexo (Atenção)" },
+  ];
+
+  const resultado = buildIndicadoresManutencao(chamados);
+
+  assert.equal(resultado.geral.condenado, 2);
+  assert.equal(resultado.porTipoDetalhe["Corretiva"].condenado, 1);
+  assert.equal(resultado.porTipoDetalhe["Preventiva"].condenado, 1);
+  assert.equal(resultado.porTipoDetalhe["Rotina"].condenado, 0);
+});

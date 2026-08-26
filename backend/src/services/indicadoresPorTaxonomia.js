@@ -124,12 +124,18 @@ export function listarPorCliente(chamados) {
     .sort((a, b) => b.total - a.total);
 }
 
+// Status real do Desk pra equipamento condenado (avaliado e reprovado pra uso, com laudo
+// técnico anexado) — precisa de card e filtro próprios, direto (não passa pelos 3 baldes de
+// classificarStatus, que são só sobre "resolvido/aberto/aguardando aprovação").
+export const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
+
 // porCausa e aguardandoAprovacao.jaAvaliados só existem quando o chamado foi enriquecido
 // com histórico de interações (campo `causa`/`passouPorAguardandoAprovacao`) — ver historicoChamado.js.
 // Sem esse enriquecimento (rota rápida, sem custo de N chamadas ao MCP), ambos ficam null.
 function detalheDoGrupo(chamados) {
   const temHistorico = chamados.some((c) => c.passouPorAguardandoAprovacao !== undefined);
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação").length;
+  const condenado = chamados.filter((c) => c.NomeStatus === STATUS_CONDENADO).length;
 
   return {
     total: chamados.length,
@@ -138,6 +144,7 @@ function detalheDoGrupo(chamados) {
     porCliente: contarPor(chamados, (chamado) => chamado.cliente),
     porNivel: buildPorNivel(chamados),
     porCausa: temHistorico ? contarPor(chamados.filter((c) => c.causa), (chamado) => chamado.causa) : null,
+    condenado,
     aguardandoAprovacao: {
       aguardando,
       jaAvaliados: temHistorico
