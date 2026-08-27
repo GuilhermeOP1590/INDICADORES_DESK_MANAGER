@@ -201,6 +201,39 @@ export function buildPorLojaOrcamento(chamados, historicoMap, equipConfig = lerC
     .sort((a, b) => totalNo(b) - totalNo(a));
 }
 
+// Empresa (fornecedor) só existe pra chamado que já passou por "Aguardando Aprovação" — é o
+// campo extra _19465, digitado nessa etapa (ver historicoChamado.js#extrairNomeEmpresa).
+// Chamado sem empresa preenchida fica fora do ranking: não existe bucket "Não informado" aqui
+// porque "sem fornecedor identificado" não ajuda a decisão que esse ranking quer responder
+// (ao contrário de loja/UF, que sempre têm valor e por isso usam esse fallback em outro lugar).
+export function buildPorEmpresaOrcamento(chamados, historicoMap) {
+  const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
+  const avaliadosBrutos = chamados.filter(
+    (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
+  );
+  const aprovados = avaliadosBrutos.filter((c) => !foiReprovado(c));
+  const reprovados = avaliadosBrutos.filter(foiReprovado);
+
+  const empresas = new Map();
+
+  function processar(lista, bucket) {
+    for (const c of lista) {
+      const nomeEmpresa = historicoMap.get(c.Chave)?.nomeEmpresa;
+      if (!nomeEmpresa) continue;
+      const chave = `${nomeEmpresa}||${c.uf || ""}`;
+      const no = empresas.get(chave) ?? novoNo({ empresa: nomeEmpresa, uf: c.uf || null });
+      empresas.set(chave, no);
+      acumularBucket(no, bucket, c, historicoMap);
+    }
+  }
+
+  processar(aguardando, "pendente");
+  processar(aprovados, "aprovado");
+  processar(reprovados, "reprovado");
+
+  return [...empresas.values()].map(arredondarNo).sort((a, b) => totalNo(b) - totalNo(a));
+}
+
 export function buildOrcamento(chamados, historicoMap) {
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
   const avaliadosBrutos = chamados.filter(

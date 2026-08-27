@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildResumoRapidoOrcamento, buildOrcamento, foiReprovado, buildPorLojaOrcamento } from "./orcamento.js";
+import { buildResumoRapidoOrcamento, buildOrcamento, foiReprovado, buildPorLojaOrcamento, buildPorEmpresaOrcamento } from "./orcamento.js";
 
 test("buildResumoRapidoOrcamento conta total e aguardando aprovação sem depender de histórico", () => {
   const chamados = [
@@ -111,4 +111,60 @@ test("buildPorLojaOrcamento agrupa loja > especialidade > categoria > equipament
 
 test("buildPorLojaOrcamento retorna array vazio pra lista de chamados vazia", () => {
   assert.deepEqual(buildPorLojaOrcamento([], new Map(), CONFIG_TESTE), []);
+});
+
+test("buildPorEmpresaOrcamento agrupa por empresa+uf, separa aprovado/pendente/reprovado e ignora chamado sem nomeEmpresa", () => {
+  const chamados = [
+    { Chave: 1, NomeStatus: "Resolvido", uf: "MG" },
+    { Chave: 2, NomeStatus: "Aguardando Aprovação", uf: "MG" },
+    { Chave: 3, NomeStatus: "Orçamento Reprovado", uf: "MG" },
+    { Chave: 4, NomeStatus: "Resolvido", uf: "BA" },
+    { Chave: 5, NomeStatus: "Resolvido", uf: "MG" },
+  ];
+  const historicoMap = new Map([
+    [1, { passouPorAguardandoAprovacao: true, valorAprovacao: 100, nomeEmpresa: "MESQUITA REFRIGERAÇÃO" }],
+    [2, { passouPorAguardandoAprovacao: false, valorAprovacao: 50, nomeEmpresa: "MESQUITA REFRIGERAÇÃO" }],
+    [3, { passouPorAguardandoAprovacao: true, valorAprovacao: 300, nomeEmpresa: "MESQUITA REFRIGERAÇÃO" }],
+    [4, { passouPorAguardandoAprovacao: true, valorAprovacao: 400, nomeEmpresa: "PORTUGAL GERADORES" }],
+    [5, { passouPorAguardandoAprovacao: true, valorAprovacao: 10, nomeEmpresa: null }],
+  ]);
+
+  const resultado = buildPorEmpresaOrcamento(chamados, historicoMap);
+
+  assert.equal(resultado.length, 2, "chamado 5 sem nomeEmpresa não deve gerar entrada");
+
+  // PORTUGAL GERADORES (aprovado 400) vem antes de MESQUITA REFRIGERAÇÃO (aprovado 100 +
+  // pendente 50 = 150) — reprovado (300) não conta pro total usado na ordenação.
+  assert.equal(resultado[0].empresa, "PORTUGAL GERADORES");
+  assert.equal(resultado[0].uf, "BA");
+  assert.deepEqual(resultado[0].aprovado, { total: 1, valor: 400 });
+  assert.deepEqual(resultado[0].pendente, { total: 0, valor: 0 });
+  assert.deepEqual(resultado[0].reprovado, { total: 0, valor: 0 });
+
+  assert.equal(resultado[1].empresa, "MESQUITA REFRIGERAÇÃO");
+  assert.equal(resultado[1].uf, "MG");
+  assert.deepEqual(resultado[1].aprovado, { total: 1, valor: 100 });
+  assert.deepEqual(resultado[1].pendente, { total: 1, valor: 50 });
+  assert.deepEqual(resultado[1].reprovado, { total: 1, valor: 300 });
+});
+
+test("buildPorEmpresaOrcamento separa a mesma empresa em UFs diferentes como entradas distintas", () => {
+  const chamados = [
+    { Chave: 1, NomeStatus: "Resolvido", uf: "MG" },
+    { Chave: 2, NomeStatus: "Resolvido", uf: "BA" },
+  ];
+  const historicoMap = new Map([
+    [1, { passouPorAguardandoAprovacao: true, valorAprovacao: 100, nomeEmpresa: "EMPILHA EMPILHADEIRAS" }],
+    [2, { passouPorAguardandoAprovacao: true, valorAprovacao: 200, nomeEmpresa: "EMPILHA EMPILHADEIRAS" }],
+  ]);
+
+  const resultado = buildPorEmpresaOrcamento(chamados, historicoMap);
+
+  assert.equal(resultado.length, 2);
+  assert.ok(resultado.every((e) => e.empresa === "EMPILHA EMPILHADEIRAS"));
+  assert.deepEqual(resultado.map((e) => e.uf).sort(), ["BA", "MG"]);
+});
+
+test("buildPorEmpresaOrcamento retorna array vazio pra lista de chamados vazia", () => {
+  assert.deepEqual(buildPorEmpresaOrcamento([], new Map()), []);
 });
