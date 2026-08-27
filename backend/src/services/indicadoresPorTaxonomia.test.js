@@ -90,6 +90,22 @@ test("buildIndicadoresManutencao conta condenados (status 'Condenado e Laudo Ane
   assert.equal(resultado.porTipoDetalhe["Rotina"].condenado, 0);
 });
 
+test("buildIndicadoresManutencao conta aguardandoPeca (2 status: 'Aguardando Peça do Estoque' e 'Peça Enviada para Loja') em geral e por tipo", () => {
+  const chamados = [
+    { tipo: "Corretiva", NomeStatus: "Aguardando Peça do Estoque" },
+    { tipo: "Corretiva", NomeStatus: "Peça Enviada para Loja" },
+    { tipo: "Corretiva", NomeStatus: "Resolvido" },
+    { tipo: "Preventiva", NomeStatus: "Aguardando Peça do Estoque" },
+  ];
+
+  const resultado = buildIndicadoresManutencao(chamados);
+
+  assert.equal(resultado.geral.aguardandoPeca, 3);
+  assert.equal(resultado.porTipoDetalhe["Corretiva"].aguardandoPeca, 2);
+  assert.equal(resultado.porTipoDetalhe["Preventiva"].aguardandoPeca, 1);
+  assert.equal(resultado.porTipoDetalhe["Rotina"].aguardandoPeca, 0);
+});
+
 test("buildCondenados filtra pelo status, calcula diasParado e junta causa/ics do histórico", () => {
   const chamados = [
     {

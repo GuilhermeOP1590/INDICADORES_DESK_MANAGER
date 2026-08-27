@@ -130,6 +130,11 @@ export function listarPorCliente(chamados) {
 // classificarStatus, que são só sobre "resolvido/aberto/aguardando aprovação").
 export const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
 
+// Os 2 status do Desk que significam "chamado parado esperando peça" — mesmo par usado em
+// historicoChamado.js#STATUS_AGUARDANDO_PECA pra medir tempo parado (aqui só contamos quantos
+// chamados estão, agora, em um desses status — não quanto tempo levou).
+export const STATUS_AGUARDANDO_PECA = ["Aguardando Peça do Estoque", "Peça Enviada para Loja"];
+
 // Lista "achatada" de condenados pendentes — usada pela página /condenados, que não tem
 // filtro de período (o objetivo é nunca perder de vista um condenado antigo). Ordena do mais
 // parado pro mais recente: quem está esperando tratamento há mais tempo aparece primeiro.
@@ -169,6 +174,7 @@ function detalheDoGrupo(chamados) {
   const temHistorico = chamados.some((c) => c.passouPorAguardandoAprovacao !== undefined);
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação").length;
   const condenado = chamados.filter((c) => c.NomeStatus === STATUS_CONDENADO).length;
+  const aguardandoPeca = chamados.filter((c) => STATUS_AGUARDANDO_PECA.includes(c.NomeStatus)).length;
 
   return {
     total: chamados.length,
@@ -178,6 +184,7 @@ function detalheDoGrupo(chamados) {
     porNivel: buildPorNivel(chamados),
     porCausa: temHistorico ? contarPor(chamados.filter((c) => c.causa), (chamado) => chamado.causa) : null,
     condenado,
+    aguardandoPeca,
     aguardandoAprovacao: {
       aguardando,
       jaAvaliados: temHistorico

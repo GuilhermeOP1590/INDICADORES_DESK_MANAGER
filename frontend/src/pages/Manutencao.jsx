@@ -23,6 +23,9 @@ const TIPOS = ["Preventiva", "Corretiva", "Rotina", "Segurança", "Outros/Não c
 // Status real do Desk pra equipamento avaliado e reprovado pra uso, com laudo técnico anexado
 // — precisa de filtro fácil e direto, não só aparecer misturado em "Chamados por status".
 const STATUS_CONDENADO = "Condenado e Laudo Anexo (Atenção)";
+// Os 2 status do Desk que significam "chamado parado esperando peça" — igual usado no backend
+// pra medir tempo parado (historicoChamado.js), aqui só conta quantos estão nesse status agora.
+const STATUS_AGUARDANDO_PECA = ["Aguardando Peça do Estoque", "Peça Enviada para Loja"];
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const COR_POR_TIPO = {
   [GERAL]: "var(--series-1)",
@@ -129,6 +132,14 @@ export default function Manutencao() {
                   statusClass="status-warning"
                   meta={tipoAtivo === GERAL && detalhesAprovacao ? formatBRL(detalhesAprovacao.valorAguardando) : undefined}
                   onClick={() => drill.abrirLista({ ...filtroBase, statusAprovacao: "aguardando" }, "Aguardando Aprovação")}
+                />
+                <StatTile
+                  label="Aguardando Peça"
+                  value={detalhe.aguardandoPeca}
+                  statusClass={detalhe.aguardandoPeca > 0 ? "status-warning" : undefined}
+                  onClick={() =>
+                    drill.abrirLista({ ...filtroBase, status: STATUS_AGUARDANDO_PECA.join(",") }, "Aguardando Peça")
+                  }
                 />
                 <StatTile
                   label="Condenado (laudo)"

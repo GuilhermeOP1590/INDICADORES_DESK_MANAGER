@@ -570,7 +570,12 @@ indicadoresRouter.get("/chamados", async (req, res) => {
     if (atividade) filtrados = filtrados.filter((c) => valorDaDimensao(c, "atividade") === atividade);
     if (equipamento) filtrados = filtrados.filter((c) => c.equipamento === equipamento);
     if (cliente) filtrados = filtrados.filter((c) => c.cliente === cliente);
-    if (status) filtrados = filtrados.filter((c) => c.NomeStatus === status);
+    // "status" aceita 1 valor ou uma lista separada por vírgula (ex: os 2 status de "aguardando
+    // peça" — Aguardando Peça do Estoque / Peça Enviada para Loja — contam como um card só).
+    if (status) {
+      const statusLista = status.split(",");
+      filtrados = filtrados.filter((c) => statusLista.includes(c.NomeStatus));
+    }
     if (operador) filtrados = filtrados.filter((c) => nomeOperador(c) === operador);
 
     // "causa" só existe no histórico de interações (assíncrono) — tratada junto com
