@@ -189,11 +189,15 @@ O `map` que monta `clientesDaRegiao` passa a incluir `porEspecialidade`:
 `porCliente={payload.porCliente}`.
 
 **`frontend/src/components/MaximizableChart.jsx`**: a função `selecionar`
-ganha mais um `else if`, antes do fallback genérico:
+ganha mais um `else if`, antes do fallback genérico. Reaproveita
+`filtroBase`/`dimensaoFiltro`, já disponíveis no escopo da função — é
+assim que o filtro (cliente + uf + período + busca, herdados da tela de
+Orçamento) começa a viajar pelos próximos níveis, sem precisar buscar de
+novo em lugar nenhum:
 
 ```js
 } else if (entry?.porEspecialidade) {
-  drill.abrirResumoLojaOrcamento(entry.porEspecialidade, label);
+  drill.abrirResumoLojaOrcamento(entry.porEspecialidade, label, { ...filtroBase, [dimensaoFiltro]: label });
 }
 ```
 
@@ -201,40 +205,46 @@ Mesmo estilo do `else if (entry?.itens)` que já existe ali — a decisão de
 qual tela abrir é dirigida pelo formato dos dados, não por mais uma prop
 booleana.
 
-**`frontend/src/lib/useDrillDown.js`**: 3 funções novas (uma a mais que a
-versão anterior deste design, pelo nível de equipamento), mesmo estilo de
+**`frontend/src/lib/useDrillDown.js`**: 3 funções novas, mesmo estilo de
 `abrirSubRanking`/`abrirResumoBacklog` (dado já em mãos, sem fetch,
-empilha sobre a pilha atual):
+empilha sobre a pilha atual). Cada uma carrega `filtroBase` além dos dados
+de exibição — é o que fecha o filtro final sem precisar reconstruí-lo do
+zero na última tela:
 
 ```js
-function abrirResumoLojaOrcamento(porEspecialidade, titulo) {
-  setPilha((p) => [...(p ?? []), { tipo: "resumoLojaOrcamento", porEspecialidade, titulo }]);
+function abrirResumoLojaOrcamento(porEspecialidade, titulo, filtroBase) {
+  setPilha((p) => [...(p ?? []), { tipo: "resumoLojaOrcamento", porEspecialidade, titulo, filtroBase }]);
 }
 
-function abrirResumoCategoriaOrcamento(porCategoria, titulo, especialidade) {
-  setPilha((p) => [...(p ?? []), { tipo: "resumoCategoriaOrcamento", porCategoria, titulo, especialidade }]);
+function abrirResumoCategoriaOrcamento(porCategoria, titulo, filtroBase) {
+  setPilha((p) => [...(p ?? []), { tipo: "resumoCategoriaOrcamento", porCategoria, titulo, filtroBase }]);
 }
 
-function abrirResumoEquipamentoOrcamento(porEquipamento, titulo) {
-  setPilha((p) => [...(p ?? []), { tipo: "resumoEquipamentoOrcamento", porEquipamento, titulo }]);
+function abrirResumoEquipamentoOrcamento(porEquipamento, titulo, filtroBase) {
+  setPilha((p) => [...(p ?? []), { tipo: "resumoEquipamentoOrcamento", porEquipamento, titulo, filtroBase }]);
 }
 ```
-
-`especialidade` viaja junto no frame de categoria porque decide, no
-próximo clique, se existe nível de equipamento (Manutenção) ou se já vai
-direto pros chamados (Engenharia) — ver `DrillDownContent` abaixo.
 
 **`frontend/src/components/DrillDownContent.jsx`**: 3 blocos novos,
 reaproveitando `RankingTable` (o mesmo componente que já mostra
 aprovado/pendente/reprovado como colunas extras em Equipamentos por Ic —
-não precisa de tabela nova). Recebe 2 props opcionais a mais,
-`onAbrirResumoCategoria` e `onAbrirResumoEquipamento` (só o chamador que
-efetivamente abre telas de orçamento por loja — `MaximizableChart.jsx`
-dentro de `RegiaoOrcamentoPanel` — passa essas props; os demais usos de
-`DrillDownContent` no app continuam sem elas, sem quebrar nada, porque
-`topo.tipo` nunca vira `resumoLojaOrcamento` fora desse fluxo):
+não precisa de tabela nova) e uma constante `formatBRL` local (mesmo
+padrão ad-hoc já repetido em cada página do app — este arquivo ainda não
+tinha precisado dela). Recebe 2 props opcionais a mais,
+`onAbrirResumoCategoria` e `onAbrirResumoEquipamento`. Essas props são
+conectadas **dentro de `MaximizableChart.jsx`**, que é quem instancia
+`<DrillDownContent>` — como `MaximizableChart` é um componente único
+reaproveitado em várias telas (Manutenção, Engenharia, Orçamento...), a
+conexão é incondicional pra todo mundo, não só pra `RegiaoOrcamentoPanel`.
+Isso é inofensivo: nas demais telas `topo.tipo` nunca vira
+`resumoLojaOrcamento` (só acontece quando `entry.porEspecialidade` existe
+no dado clicado, o que só ocorre no gráfico "Custo por unidade" dentro de
+`RegiaoOrcamentoPanel`), então essas props simplesmente nunca são chamadas
+ali.
 
 ```jsx
+const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 const COLUNAS_ORCAMENTO = [
   { header: "Aprovado", render: (d) => formatBRL(d.aprovadoValor), sortKeyName: "aprovadoValor" },
   { header: "Pendente", render: (d) => formatBRL(d.pendenteValor), sortKeyName: "pendenteValor" },
@@ -260,7 +270,7 @@ if (topo?.tipo === "resumoLojaOrcamento") {
       formatValue={formatBRL}
       colunasExtras={COLUNAS_ORCAMENTO}
       onSelecionar={(_label, _agregado, linha) =>
-        onAbrirResumoCategoria(linha.porCategoria, `${topo.titulo} — ${linha.label}`, linha.label)
+        onAbrirResumoCategoria(linha.porCategoria, `${topo.titulo} — ${linha.label}`, { ...topo.filtroBase, especialidade: linha.label })
       }
     />
   );
@@ -276,8 +286,8 @@ if (topo?.tipo === "resumoCategoriaOrcamento") {
       colunasExtras={COLUNAS_ORCAMENTO}
       onSelecionar={(_label, _agregado, linha) =>
         linha.porEquipamento
-          ? onAbrirResumoEquipamento(linha.porEquipamento, `${topo.titulo} — ${linha.label}`)
-          : onAbrirLista({ especialidade: topo.especialidade, tipoAtividade: linha.label, statusAprovacao: "comOrcamento" }, linha.label)
+          ? onAbrirResumoEquipamento(linha.porEquipamento, `${topo.titulo} — ${linha.label}`, topo.filtroBase)
+          : onAbrirLista({ ...topo.filtroBase, tipoAtividade: linha.label }, linha.label)
       }
     />
   );
@@ -291,19 +301,19 @@ if (topo?.tipo === "resumoEquipamentoOrcamento") {
       nomeColuna="Equipamento"
       formatValue={formatBRL}
       colunasExtras={COLUNAS_ORCAMENTO}
-      onSelecionar={(label) => onAbrirLista({ equipamento: label, statusAprovacao: "comOrcamento" }, label)}
+      onSelecionar={(label) => onAbrirLista({ ...topo.filtroBase, equipamento: label }, label)}
     />
   );
 }
 ```
 
-O plano de implementação precisa amarrar o filtro `cliente`/`uf` também —
-eles entram desde o primeiro clique (na loja) e viajam em todo frame até o
-final (`onAbrirLista` da tela de Equipamento/Categoria-Engenharia), pra a
-lista de chamados no fim não vazar chamados de outras lojas. O trecho
-acima mostra a lógica de navegação; os campos exatos de filtro (cliente,
-uf, período herdado da tela de Orçamento) ficam detalhados passo a passo
-no plano.
+`statusAprovacao: "comOrcamento"` **não precisa ser adicionado de novo em
+nenhum desses pontos** — já está dentro do `filtroBase` original, montado
+lá em `RegiaoOrcamentoPanel` (`filtroBase={{ ...filtroBase, uf:
+regiaoSelecionada, statusAprovacao: "comOrcamento" }}`) e propagado por
+`{ ...topo.filtroBase, ... }` em cada nível. O mesmo vale pra `cliente` e
+`uf`: entram no primeiro clique (na barra da loja) e chegam intactos até a
+última tela, então a lista final nunca mistura chamados de outra loja.
 
 ## Testes
 
@@ -329,15 +339,16 @@ GET /api/orcamento
            aprovado/pendente/reprovado em cada nível
 
 Clique na barra de loja (RegiaoOrcamentoPanel, dentro do MaximizableChart "Custo por unidade")
-  → drill.abrirResumoLojaOrcamento(loja.porEspecialidade, loja.cliente)
+  filtroBase de entrada já traz: uf, statusAprovacao: "comOrcamento", período, busca (herdados da tela de Orçamento)
+  → drill.abrirResumoLojaOrcamento(loja.porEspecialidade, loja.cliente, { ...filtroBase, cliente: loja.cliente })
   → RankingTable (Especialidade) — sem fetch, dado já no payload
-  → clique numa linha → drill.abrirResumoCategoriaOrcamento(especialidade.porCategoria, ..., especialidade)
+  → clique numa linha → drill.abrirResumoCategoriaOrcamento(especialidade.porCategoria, ..., { ...filtroBase, especialidade })
   → RankingTable (Categoria de custo) — sem fetch
   → clique numa linha:
-      Manutenção (tem porEquipamento) → drill.abrirResumoEquipamentoOrcamento(...)
+      Manutenção (tem porEquipamento) → drill.abrirResumoEquipamentoOrcamento(..., filtroBase)
         → RankingTable (Equipamento) — sem fetch
-        → clique numa linha → onAbrirLista({ equipamento, statusAprovacao: "comOrcamento" })
-      Engenharia (sem porEquipamento) → onAbrirLista({ especialidade, tipoAtividade, statusAprovacao: "comOrcamento" })
+        → clique numa linha → onAbrirLista({ ...filtroBase, equipamento })
+      Engenharia (sem porEquipamento) → onAbrirLista({ ...filtroBase, tipoAtividade })
   → GET /api/chamados (fetch de verdade, tela final igual ao resto do app — já mostra
     Código/Assunto/Status/Prioridade/Datas/Cliente/Empresa/Solicitante/Operador/Valor)
 ```
