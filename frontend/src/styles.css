@@ -661,6 +661,12 @@ td.num, th.num {
   padding: 4px 12px;
   font-size: 12px;
   color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.equip-summary-chip.ativo {
+  border-color: var(--status-good);
+  color: var(--text-primary);
 }
 
 .equip-bulk-bar {
@@ -698,6 +704,15 @@ td.num, th.num {
 
 .equip-row:hover {
   background: var(--gridline);
+}
+
+.equip-row-header {
+  border-bottom: 2px solid var(--baseline);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  cursor: default;
 }
 
 .equip-grupo-badge {

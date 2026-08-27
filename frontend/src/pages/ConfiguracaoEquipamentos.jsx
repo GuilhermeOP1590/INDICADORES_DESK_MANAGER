@@ -8,6 +8,7 @@ function normalizarChave(texto) {
 export default function ConfiguracaoEquipamentos() {
   const [state, setState] = useState({ status: "loading", config: null, equipamentosDisponiveis: [], error: null });
   const [busca, setBusca] = useState("");
+  const [filtroGrupo, setFiltroGrupo] = useState("");
   const [selecionados, setSelecionados] = useState(new Set());
   const [grupoParaAplicar, setGrupoParaAplicar] = useState("");
   const [novoGrupo, setNovoGrupo] = useState("");
@@ -22,9 +23,15 @@ export default function ConfiguracaoEquipamentos() {
 
   const equipamentosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
-    if (!termo) return state.equipamentosDisponiveis;
-    return state.equipamentosDisponiveis.filter((e) => e.label.toLowerCase().includes(termo));
-  }, [state.equipamentosDisponiveis, busca]);
+    return state.equipamentosDisponiveis.filter((e) => {
+      if (termo && !e.label.toLowerCase().includes(termo)) return false;
+      if (filtroGrupo) {
+        const grupoAtual = state.config?.atribuicoes[normalizarChave(e.label)] ?? "Não classificado";
+        if (grupoAtual !== filtroGrupo) return false;
+      }
+      return true;
+    });
+  }, [state.equipamentosDisponiveis, state.config, busca, filtroGrupo]);
 
   const resumoPorGrupo = useMemo(() => {
     if (!state.config) return [];
@@ -103,9 +110,14 @@ export default function ConfiguracaoEquipamentos() {
 
       <div className="equip-summary">
         {resumoPorGrupo.map((g) => (
-          <span key={g.label} className="equip-summary-chip">
+          <button
+            key={g.label}
+            type="button"
+            className={`equip-summary-chip${filtroGrupo === g.label ? " ativo" : ""}`}
+            onClick={() => setFiltroGrupo((atual) => (atual === g.label ? "" : g.label))}
+          >
             {g.label}: <strong>{g.total}</strong>
-          </span>
+          </button>
         ))}
       </div>
 
@@ -128,6 +140,11 @@ export default function ConfiguracaoEquipamentos() {
         <button className="refresh-btn" onClick={adicionarGrupo} disabled={!novoGrupo.trim()}>
           + Novo grupo
         </button>
+        {filtroGrupo && (
+          <span className="meta">
+            Filtrando por <strong>{filtroGrupo}</strong> — clique de novo no chip pra limpar
+          </span>
+        )}
       </div>
 
       <div className="equip-bulk-bar">
@@ -146,18 +163,27 @@ export default function ConfiguracaoEquipamentos() {
         </button>
       </div>
 
-      <div className="panel full-width equip-list">
-        {equipamentosFiltrados.map((e) => {
-          const grupoAtual = state.config.atribuicoes[normalizarChave(e.label)] ?? "Não classificado";
-          return (
-            <label key={e.label} className="equip-row">
-              <input type="checkbox" checked={selecionados.has(e.label)} onChange={() => toggleSelecionado(e.label)} />
-              <span>{e.label}</span>
-              <span className="meta">{e.total} chamados</span>
-              <span className={`equip-grupo-badge ${grupoAtual === "Não classificado" ? "sem-grupo" : ""}`}>{grupoAtual}</span>
-            </label>
-          );
-        })}
+      <div className="panel full-width">
+        <div className="equip-row equip-row-header">
+          <span />
+          <span>Equipamento</span>
+          <span className="meta">Chamados</span>
+          <span className="equip-grupo-badge">Grupo</span>
+        </div>
+        <div className="equip-list">
+          {equipamentosFiltrados.length === 0 && <p className="subtitle">Nenhum equipamento corresponde a esse filtro.</p>}
+          {equipamentosFiltrados.map((e) => {
+            const grupoAtual = state.config.atribuicoes[normalizarChave(e.label)] ?? "Não classificado";
+            return (
+              <label key={e.label} className="equip-row">
+                <input type="checkbox" checked={selecionados.has(e.label)} onChange={() => toggleSelecionado(e.label)} />
+                <span>{e.label}</span>
+                <span className="meta">{e.total} chamados</span>
+                <span className={`equip-grupo-badge ${grupoAtual === "Não classificado" ? "sem-grupo" : ""}`}>{grupoAtual}</span>
+              </label>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
