@@ -34,7 +34,7 @@ import { buildPorIc } from "../services/icsEquipamento.js";
 import { buildTendenciaMensal } from "../services/tendenciaMensalManutencao.js";
 import { buildTendenciaMensalPorCausa } from "../services/tendenciaMensalCausa.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario, fetchNomePorUsuario } from "../services/usuarios.js";
-import { fetchUfPorCodigoCliente } from "../services/clientesUf.js";
+import { fetchUfPorCodigoCliente, fetchEmpresaPorCodigoCliente } from "../services/clientesUf.js";
 import { fetchSubCategorias } from "../services/subcategorias.js";
 
 export const indicadoresRouter = Router();
@@ -158,15 +158,23 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
     const periodo = lerPeriodo(req);
     const { situacaoVolume, operador, area, cliente, tipo, status, criadosAntes, q, dimensao, foraDoTopo, nivel } = req.query;
 
-    const [{ data }, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, subCategoriaIndex, nomePorUsuario] =
-      await Promise.all([
-        fetchChamados({ forceRefresh }),
-        fetchUsuarios({ forceRefresh }),
-        fetchCodigoClientePorUsuario({ forceRefresh }),
-        fetchUfPorCodigoCliente({ forceRefresh }),
-        fetchSubCategorias({ forceRefresh }),
-        fetchNomePorUsuario({ forceRefresh }),
-      ]);
+    const [
+      { data },
+      clientePorUsuario,
+      codigoClientePorUsuario,
+      ufPorCodigoCliente,
+      subCategoriaIndex,
+      nomePorUsuario,
+      empresaPorCodigoCliente,
+    ] = await Promise.all([
+      fetchChamados({ forceRefresh }),
+      fetchUsuarios({ forceRefresh }),
+      fetchCodigoClientePorUsuario({ forceRefresh }),
+      fetchUfPorCodigoCliente({ forceRefresh }),
+      fetchSubCategorias({ forceRefresh }),
+      fetchNomePorUsuario({ forceRefresh }),
+      fetchEmpresaPorCodigoCliente({ forceRefresh }),
+    ]);
 
     const comUf = anexarUf(data, { codigoClientePorUsuario, ufPorCodigoCliente });
     const comArea = anexarSlaNivel(
@@ -219,6 +227,7 @@ indicadoresRouter.get("/dashboard/chamados", async (req, res) => {
           dataFinalizacao: finalizado ? c.DataFinalizacao : null,
           horaFinalizacao: finalizado ? c.HoraFinalizacao : null,
           cliente: clientePorUsuario.get(c.ChaveUsuario) ?? null,
+          empresa: empresaPorCodigoCliente.get(codigoClientePorUsuario.get(c.ChaveUsuario)) ?? null,
           solicitante: nomePorUsuario.get(c.ChaveUsuario) ?? null,
           uf: c.uf,
           area: c.area,
@@ -651,6 +660,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
           dataFinalizacao: finalizado ? c.DataFinalizacao : null,
           horaFinalizacao: finalizado ? c.HoraFinalizacao : null,
           cliente: c.cliente,
+          empresa: c.empresa ?? null,
           solicitante: c.solicitante ?? null,
           uf: c.uf,
           operador: nomeOperador(c),

@@ -1,7 +1,7 @@
 import { classificarChamado } from "./taxonomia.js";
 import { fetchSubCategorias } from "./subcategorias.js";
 import { fetchUsuarios, fetchCodigoClientePorUsuario, fetchNomePorUsuario } from "./usuarios.js";
-import { fetchUfPorCodigoCliente } from "./clientesUf.js";
+import { fetchUfPorCodigoCliente, fetchEmpresaPorCodigoCliente } from "./clientesUf.js";
 import { fetchChamados } from "./chamados.js";
 import { parseSlaNivel } from "./slaNivel.js";
 
@@ -31,7 +31,10 @@ export function anexarArea(chamados, subCategoriaIndex) {
   });
 }
 
-export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, nomePorUsuario }) {
+export function enriquecerChamados(
+  chamados,
+  { subCategoriaIndex, clientePorUsuario, codigoClientePorUsuario, ufPorCodigoCliente, nomePorUsuario, empresaPorCodigoCliente }
+) {
   const enriquecidos = [];
 
   for (const chamado of chamados) {
@@ -48,6 +51,7 @@ export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsua
       cliente,
       solicitante: nomePorUsuario?.get(chamado.ChaveUsuario) ?? null,
       uf: ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }),
+      empresa: empresaPorCodigoCliente?.get(codigoClientePorUsuario.get(chamado.ChaveUsuario)) || null,
     });
   }
 
@@ -66,6 +70,7 @@ export async function carregarChamadosEnriquecidos({ forceRefresh = false } = {}
     codigoClientePorUsuario,
     ufPorCodigoCliente,
     nomePorUsuario,
+    empresaPorCodigoCliente,
   ] = await Promise.all([
     fetchChamados({ forceRefresh }),
     fetchSubCategorias({ forceRefresh }),
@@ -73,6 +78,7 @@ export async function carregarChamadosEnriquecidos({ forceRefresh = false } = {}
     fetchCodigoClientePorUsuario({ forceRefresh }),
     fetchUfPorCodigoCliente({ forceRefresh }),
     fetchNomePorUsuario({ forceRefresh }),
+    fetchEmpresaPorCodigoCliente({ forceRefresh }),
   ]);
 
   const enriquecidos = enriquecerChamados(chamados, {
@@ -81,6 +87,7 @@ export async function carregarChamadosEnriquecidos({ forceRefresh = false } = {}
     codigoClientePorUsuario,
     ufPorCodigoCliente,
     nomePorUsuario,
+    empresaPorCodigoCliente,
   });
 
   return { chamados: enriquecidos, totalOriginal };

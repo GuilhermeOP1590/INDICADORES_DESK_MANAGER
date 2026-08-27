@@ -62,6 +62,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
   const temTipo = tiposDisponiveis.length > 0;
   const temPrioridade = state.chamados.some((c) => c.prioridade !== undefined);
   const temSolicitante = state.chamados.some((c) => c.solicitante !== undefined);
+  const temEmpresa = state.chamados.some((c) => c.empresa !== undefined);
   const temDiasEmAberto = state.chamados.some((c) => c.diasEmAberto !== undefined);
 
   const chamadosFiltrados = useMemo(() => {
@@ -99,6 +100,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
     { chave: "dataHoraFinalizacao", titulo: "Data de finalização" },
     { chave: "diasEmAberto", titulo: "Aberto há (dias)" },
     { chave: "cliente", titulo: "Cliente" },
+    { chave: "empresa", titulo: "Empresa" },
     { chave: "solicitante", titulo: "Solicitante" },
     { chave: "operador", titulo: "Operador" },
   ];
@@ -192,6 +194,9 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 />
               )}
               <SortableTh label="Cliente" sortKeyName="cliente" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              {temEmpresa && (
+                <SortableTh label="Empresa" sortKeyName="empresa" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              )}
               {temSolicitante && (
                 <SortableTh label="Solicitante" sortKeyName="solicitante" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
               )}
@@ -241,6 +246,7 @@ export function ChamadosList({ filtros, onAbrirChamado, fetcher }) {
                 <td>{c.dataFinalizacao ? `${formatBR(c.dataFinalizacao)} ${c.horaFinalizacao}` : "—"}</td>
                 {temDiasEmAberto && <td className="num">{c.diasEmAberto ?? "—"}</td>}
                 <td>{c.cliente ?? "—"}</td>
+                {temEmpresa && <td>{c.empresa ?? "—"}</td>}
                 {temSolicitante && <td>{c.solicitante ?? "—"}</td>}
                 {temArea && <td>{c.area ?? "—"}</td>}
                 {temTipo && <td>{c.tipo ?? "—"}</td>}
