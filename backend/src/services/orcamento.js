@@ -1,3 +1,5 @@
+import { grupoDoEquipamento, lerConfiguracaoEquipamentos } from "./configuracaoEquipamentos.js";
+
 // O valor (_8575) é lançado na interação em que o técnico PEDE aprovação — continua lá mesmo
 // se o aprovador rejeitar o pedido depois. Sem essa checagem, um orçamento reprovado (negado,
 // nunca gasto) somava junto com os aprovados em toda soma de "valor aprovado"/custo.
@@ -100,6 +102,105 @@ export function buildResumoRapidoOrcamento(chamados) {
   return { totalChamados: chamados.length, aguardandoTotal };
 }
 
+function chaveCategoria(chamado, equipConfig) {
+  if (chamado.especialidade === "Engenharia") return chamado.tipoAtividade || "Não classificado";
+  return grupoDoEquipamento(chamado.equipamento, equipConfig);
+}
+
+function bucketVazio() {
+  return { total: 0, valor: 0 };
+}
+
+function novoNo(camposExtra) {
+  return { ...camposExtra, aprovado: bucketVazio(), pendente: bucketVazio(), reprovado: bucketVazio() };
+}
+
+function acumularBucket(no, bucket, chamado, historicoMap) {
+  no[bucket].total += 1;
+  no[bucket].valor += valorDe(historicoMap, chamado);
+}
+
+// Some do custo "real": aprovado + pendente. Reprovado fica de fora do total usado pra
+// ordenar (mesmo racional de buildOrcamento/icsEquipamento — visível, mas não comprometido).
+function totalNo(no) {
+  return no.aprovado.valor + no.pendente.valor;
+}
+
+function arredondarNo(no) {
+  return {
+    ...no,
+    aprovado: { ...no.aprovado, valor: arredondar(no.aprovado.valor) },
+    pendente: { ...no.pendente, valor: arredondar(no.pendente.valor) },
+    reprovado: { ...no.reprovado, valor: arredondar(no.reprovado.valor) },
+  };
+}
+
+// Navegação Loja -> Especialidade -> Categoria de custo -> Equipamento (só Manutenção) usada
+// pelo painel "Orçamento por região" — cada nível traz aprovado/pendente/reprovado separados
+// (mesmo racional de icsEquipamento.js). Engenharia não tem "equipamento": sua categoria
+// (tipoAtividade) já é o nível mais fino.
+export function buildPorLojaOrcamento(chamados, historicoMap, equipConfig = lerConfiguracaoEquipamentos()) {
+  const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
+  const avaliadosBrutos = chamados.filter(
+    (c) => historicoMap.get(c.Chave)?.passouPorAguardandoAprovacao && c.NomeStatus !== "Aguardando Aprovação"
+  );
+  const aprovados = avaliadosBrutos.filter((c) => !foiReprovado(c));
+  const reprovados = avaliadosBrutos.filter(foiReprovado);
+
+  const lojas = new Map();
+
+  function processar(lista, bucket) {
+    for (const c of lista) {
+      const cliente = c.cliente || "Não informado";
+      const especialidade = c.especialidade || "Não informado";
+      const categoria = chaveCategoria(c, equipConfig);
+
+      const noLoja = lojas.get(cliente) ?? novoNo({ cliente, uf: c.uf || null, porEspecialidade: new Map() });
+      lojas.set(cliente, noLoja);
+      acumularBucket(noLoja, bucket, c, historicoMap);
+
+      const noEsp = noLoja.porEspecialidade.get(especialidade) ?? novoNo({ especialidade, porCategoria: new Map() });
+      noLoja.porEspecialidade.set(especialidade, noEsp);
+      acumularBucket(noEsp, bucket, c, historicoMap);
+
+      const noCat = noEsp.porCategoria.get(categoria) ?? novoNo({ categoria });
+      noEsp.porCategoria.set(categoria, noCat);
+      acumularBucket(noCat, bucket, c, historicoMap);
+
+      if (especialidade === "Manutenção") {
+        const equipamento = c.equipamento || "Não informado";
+        noCat.porEquipamento = noCat.porEquipamento ?? new Map();
+        const noEquip = noCat.porEquipamento.get(equipamento) ?? novoNo({ equipamento });
+        noCat.porEquipamento.set(equipamento, noEquip);
+        acumularBucket(noEquip, bucket, c, historicoMap);
+      }
+    }
+  }
+
+  processar(aguardando, "pendente");
+  processar(aprovados, "aprovado");
+  processar(reprovados, "reprovado");
+
+  return [...lojas.values()]
+    .map((loja) => ({
+      ...arredondarNo(loja),
+      porEspecialidade: [...loja.porEspecialidade.values()]
+        .map((esp) => ({
+          ...arredondarNo(esp),
+          porCategoria: [...esp.porCategoria.values()]
+            .map((cat) => ({
+              ...arredondarNo(cat),
+              ...(cat.porEquipamento
+                ? { porEquipamento: [...cat.porEquipamento.values()].map(arredondarNo).sort((a, b) => totalNo(b) - totalNo(a)) }
+                : {}),
+            }))
+            .sort((a, b) => totalNo(b) - totalNo(a)),
+        }))
+        .sort((a, b) => totalNo(b) - totalNo(a)),
+    }))
+    .sort((a, b) => totalNo(b) - totalNo(a));
+}
+
 export function buildOrcamento(chamados, historicoMap) {
   const aguardando = chamados.filter((c) => c.NomeStatus === "Aguardando Aprovação");
   const avaliadosBrutos = chamados.filter(
@@ -137,5 +238,6 @@ export function buildOrcamento(chamados, historicoMap) {
       (c) => ({ uf: c.uf || null })
     ),
     historicoAprovacoes: buildHistoricoAprovacoes(avaliados, historicoMap),
+    porLoja: buildPorLojaOrcamento(chamados, historicoMap),
   };
 }
