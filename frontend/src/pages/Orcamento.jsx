@@ -220,7 +220,7 @@ export default function Orcamento() {
             </>
           )}
 
-          <RegiaoOrcamentoPanel porUf={payload.porUf} porLoja={payload.porLoja} filtroBase={filtroBase} />
+          <RegiaoOrcamentoPanel porUf={payload.porUf} porLoja={payload.porLoja} porEmpresa={payload.porEmpresa} filtroBase={filtroBase} />
 
           <section className="panel-grid">
             <div className="panel">
