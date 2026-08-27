@@ -739,3 +739,7 @@ td.num, th.num {
   border-color: var(--status-critical);
   color: var(--status-critical);
 }
+
+.hbc-legenda { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+.hbc-legenda span { display: flex; align-items: center; gap: 5px; }
+.hbc-legenda i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
