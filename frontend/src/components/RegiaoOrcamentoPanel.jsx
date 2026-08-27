@@ -100,6 +100,7 @@ export function RegiaoOrcamentoPanel({ porUf, porLoja, porEmpresa, filtroBase })
               formatValue={formatBRL}
               labelKey="rotulo"
               stacked={abaCusto === "todos"}
+              yAxisWidth={220}
             />
           ) : (
             <p className="subtitle" style={{ marginTop: 12 }}>
@@ -120,6 +121,7 @@ export function RegiaoOrcamentoPanel({ porUf, porLoja, porEmpresa, filtroBase })
               formatValue={formatBRL}
               labelKey="rotulo"
               stacked={abaEmpresa === "todos"}
+              yAxisWidth={220}
             />
           ) : (
             <p className="subtitle" style={{ marginTop: 12 }}>

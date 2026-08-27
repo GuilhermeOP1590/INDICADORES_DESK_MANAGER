@@ -26,6 +26,7 @@ export function MaximizableChart({
   previewHeight = 220,
   stacked = false,
   labelKey = "total",
+  yAxisWidth,
 }) {
   const drill = useDrillDown();
 
@@ -62,6 +63,7 @@ export function MaximizableChart({
         agregarOutros={agregarOutros}
         stacked={stacked}
         labelKey={labelKey}
+        yAxisWidth={yAxisWidth}
       />
 
       {drill.pilha !== null && (
@@ -102,6 +104,7 @@ export function MaximizableChart({
                     formatValue={formatValue}
                     stacked={stacked}
                     labelKey={labelKey}
+                    yAxisWidth={yAxisWidth}
                   />
                 );
               }
@@ -118,6 +121,7 @@ export function MaximizableChart({
                     formatValue={formatValue}
                     stacked={stacked}
                     labelKey={labelKey}
+                    yAxisWidth={yAxisWidth}
                   />
                   <h3 style={{ marginTop: 20 }}>Todos ({data.length})</h3>
                   <RankingTable data={data} formatValue={formatValue} onSelecionar={selecionar} colunasExtras={colunasOrcamento} />
