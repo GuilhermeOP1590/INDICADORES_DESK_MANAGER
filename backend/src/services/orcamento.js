@@ -272,5 +272,6 @@ export function buildOrcamento(chamados, historicoMap) {
     ),
     historicoAprovacoes: buildHistoricoAprovacoes(avaliados, historicoMap),
     porLoja: buildPorLojaOrcamento(chamados, historicoMap),
+    porEmpresa: buildPorEmpresaOrcamento(chamados, historicoMap),
   };
 }

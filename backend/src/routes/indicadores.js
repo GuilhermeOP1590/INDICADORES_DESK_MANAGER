@@ -573,6 +573,7 @@ indicadoresRouter.get("/chamados", async (req, res) => {
       situacao,
       causa,
       statusAprovacao,
+      empresa,
       q,
       dimensao,
       foraDoTopo,
@@ -609,11 +610,12 @@ indicadoresRouter.get("/chamados", async (req, res) => {
 
     const foraDoTopoCausa = dimensao === "causa" && foraDoTopo ? new Set(foraDoTopo.split("|")) : null;
     let historicoMap = null;
-    if (causa || statusAprovacao || foraDoTopoCausa) {
+    if (causa || statusAprovacao || empresa || foraDoTopoCausa) {
       historicoMap = await obterHistoricoEmLote(filtrados);
       filtrados = filtrados.filter((c) => {
         const historico = historicoMap.get(c.Chave) || {};
         if (causa && historico.causa !== causa) return false;
+        if (empresa && historico.nomeEmpresa !== empresa) return false;
         if (foraDoTopoCausa && foraDoTopoCausa.has(historico.causa)) return false;
         // "Avaliado" = passou pela aprovação E foi aceito. Reprovado (valor pedido e negado)
         // é um bucket à parte — ver foiReprovado em orcamento.js.
