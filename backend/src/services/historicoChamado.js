@@ -28,6 +28,12 @@ const CAMPO_EXTRA_ORCAMENTO_CONFIRMADO = "_9637";
 const CAMPO_EXTRA_HORIMETRO = "_9293";
 const CAMPO_ICS = "ICs";
 
+// "_19465" é o campo extra "NOME DA EMPRESA" (Tipo: Interações), descoberto via
+// lista_de_campos_extras — mesma interação que carrega o valor (_8575): é o nome do
+// fornecedor/prestador que forneceu o orçamento (ex: "Mesquita", "I9 Geradores"), NÃO a razão
+// social da loja/cliente (esses são conceitos diferentes no Desk).
+const CAMPO_EXTRA_NOME_EMPRESA = "_19465";
+
 async function fetchInteracoes({ chave, codChamado }) {
   const data = await callDeskMcpTool("dados_da_interacao_do_chamados", {
     body: {
@@ -41,6 +47,7 @@ async function fetchInteracoes({ chave, codChamado }) {
         [CAMPO_EXTRA_VALOR]: "on",
         [CAMPO_EXTRA_ORCAMENTO_CONFIRMADO]: "on",
         [CAMPO_EXTRA_HORIMETRO]: "on",
+        [CAMPO_EXTRA_NOME_EMPRESA]: "on",
         [CAMPO_ICS]: "on",
       },
     },
@@ -72,6 +79,13 @@ function parseValorBR(texto) {
 function extrairValorAprovacao(interacoes) {
   const comValor = interacoes.find((interacao) => interacao[CAMPO_EXTRA_VALOR]);
   return comValor ? parseValorBR(comValor[CAMPO_EXTRA_VALOR]) : null;
+}
+
+// Mesmo padrão de extrairValorAprovacao — nome do fornecedor lançado na mesma interação do
+// pedido de orçamento.
+export function extrairNomeEmpresa(interacoes) {
+  const comEmpresa = interacoes.find((interacao) => interacao[CAMPO_EXTRA_NOME_EMPRESA]);
+  return comEmpresa ? comEmpresa[CAMPO_EXTRA_NOME_EMPRESA] : null;
 }
 
 // "11-08-2026" (DataAcao, formato BR sem hora — a API não expõe hora por ação) -> "2026-08-11"
@@ -156,6 +170,7 @@ export async function obterHistoricoChamado({ chave, codChamado, finalizado = fa
     causa: extrairCausa(interacoes),
     passouPorAguardandoAprovacao: extrairPassouPorAguardandoAprovacao(interacoes),
     valorAprovacao: extrairValorAprovacao(interacoes),
+    nomeEmpresa: extrairNomeEmpresa(interacoes),
     dataAprovacao: extrairDataAprovacao(interacoes),
     ics: extrairIcs(interacoes),
     horimetro: extrairHorimetro(interacoes),
@@ -190,6 +205,7 @@ export async function obterHistoricoEmLote(chamados, { concorrencia = 60, forceR
       causa: null,
       passouPorAguardandoAprovacao: false,
       valorAprovacao: null,
+      nomeEmpresa: null,
       dataAprovacao: null,
       ics: [],
       horimetro: null,

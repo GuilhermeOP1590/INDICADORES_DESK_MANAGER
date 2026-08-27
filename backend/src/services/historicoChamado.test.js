@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extrairIcs, extrairHorimetro, extrairTempoAguardandoPecaDias, ttlPara } from "./historicoChamado.js";
+import { extrairIcs, extrairHorimetro, extrairNomeEmpresa, extrairTempoAguardandoPecaDias, ttlPara } from "./historicoChamado.js";
 
 test("ttlPara usa um TTL bem mais longo pra chamado finalizado do que pra chamado aberto", () => {
   assert.equal(ttlPara(false), 15 * 60 * 1000);
@@ -45,6 +45,16 @@ test("extrairHorimetro pula interações sem _9293 até achar uma preenchida", (
 test("extrairHorimetro retorna null quando nenhuma interação tem _9293", () => {
   const interacoes = [{ Status: [{ text: "Resolvido" }] }];
   assert.equal(extrairHorimetro(interacoes), null);
+});
+
+test("extrairNomeEmpresa pega o nome do fornecedor da interação que tem _19465 preenchido", () => {
+  const interacoes = [{ Status: [{ text: "Orçamento Reprovado" }] }, { _19465: "EMPILHA EMPILHADEIRAS" }];
+  assert.equal(extrairNomeEmpresa(interacoes), "EMPILHA EMPILHADEIRAS");
+});
+
+test("extrairNomeEmpresa retorna null quando nenhuma interação tem _19465", () => {
+  const interacoes = [{ Status: [{ text: "Resolvido" }] }];
+  assert.equal(extrairNomeEmpresa(interacoes), null);
 });
 
 test("extrairTempoAguardandoPecaDias soma um período fechado (entrou e saiu)", () => {
