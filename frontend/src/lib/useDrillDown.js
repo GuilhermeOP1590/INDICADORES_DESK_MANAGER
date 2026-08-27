@@ -43,6 +43,24 @@ export function useDrillDown() {
     setPilha((p) => [...(p ?? []), { tipo: "subRanking", dados, titulo, ...opts }]);
   }
 
+  // Resumo de orçamento por loja (Manutenção x Engenharia) — dado já pronto no payload de
+  // /orcamento, sem fetch. filtroBase carrega cliente/uf/período/statusAprovacao já herdados
+  // do clique anterior, pra a lista de chamados no fim nunca vazar loja errada.
+  function abrirResumoLojaOrcamento(porEspecialidade, titulo, filtroBase) {
+    setPilha((p) => [...(p ?? []), { tipo: "resumoLojaOrcamento", porEspecialidade, titulo, filtroBase }]);
+  }
+
+  // Resumo por categoria de custo (grupo de equipamento em Manutenção, tipoAtividade em
+  // Engenharia) dentro de uma especialidade de uma loja — mesmo racional, sem fetch.
+  function abrirResumoCategoriaOrcamento(porCategoria, titulo, filtroBase) {
+    setPilha((p) => [...(p ?? []), { tipo: "resumoCategoriaOrcamento", porCategoria, titulo, filtroBase }]);
+  }
+
+  // Resumo por equipamento individual dentro de uma categoria — só existe pra Manutenção.
+  function abrirResumoEquipamentoOrcamento(porEquipamento, titulo, filtroBase) {
+    setPilha((p) => [...(p ?? []), { tipo: "resumoEquipamentoOrcamento", porEquipamento, titulo, filtroBase }]);
+  }
+
   function abrirChamado(chamado) {
     setPilha((p) => [...(p ?? []), { tipo: "detalhe", chamado, titulo: chamado.codChamado }]);
   }
@@ -67,6 +85,9 @@ export function useDrillDown() {
     abrirResumoBacklog,
     abrirListaEmpilhada,
     abrirSubRanking,
+    abrirResumoLojaOrcamento,
+    abrirResumoCategoriaOrcamento,
+    abrirResumoEquipamentoOrcamento,
     abrirChamado,
     voltar,
     fechar,

@@ -62,6 +62,8 @@ export function MaximizableChart({
                   );
                 } else if (entry?.itens) {
                   drill.abrirSubRanking(entry.itens, label, { filtroBase, fetcher, color, formatValue });
+                } else if (entry?.porEspecialidade) {
+                  drill.abrirResumoLojaOrcamento(entry.porEspecialidade, label, { ...filtroBase, [dimensaoFiltro]: label });
                 } else if (resumoPorCliente) {
                   drill.abrirResumoCliente({ ...filtroBase, cliente: label }, label);
                 } else {
@@ -103,6 +105,8 @@ export function MaximizableChart({
             topo={drill.topo}
             onAbrirChamado={drill.abrirChamado}
             onAbrirLista={(filtros, titulo) => drill.abrirListaEmpilhada(filtros, titulo, fetcher)}
+            onAbrirResumoCategoria={drill.abrirResumoCategoriaOrcamento}
+            onAbrirResumoEquipamento={drill.abrirResumoEquipamentoOrcamento}
           />
         </Modal>
       )}
