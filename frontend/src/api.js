@@ -122,6 +122,10 @@ export function fetchCondenados(opts) {
   return getJson("/api/condenados", opts ?? {});
 }
 
+export function fetchAguardandoPeca(opts) {
+  return getJson("/api/aguardando-peca", opts ?? {});
+}
+
 export async function adicionarPrioridade(codChamado, nota) {
   const response = await fetch("/api/prioritarios", {
     method: "POST",

@@ -167,6 +167,38 @@ export function buildCondenados(chamados, historicoMap, { hoje = new Date() } = 
   };
 }
 
+// Mesma ideia de buildCondenados, mas pros 2 status de "parado esperando peça" — usada pela
+// página /aguardando-peca, que também não tem filtro de período (não perder de vista peça
+// pendente há muito tempo, mesmo fora do mês atual).
+export function buildAguardandoPeca(chamados, historicoMap, { hoje = new Date() } = {}) {
+  const pendentes = chamados.filter((c) => STATUS_AGUARDANDO_PECA.includes(c.NomeStatus));
+
+  const itens = pendentes
+    .map((c) => {
+      const historico = historicoMap.get(c.Chave);
+      return {
+        chave: c.Chave,
+        codChamado: c.CodChamado,
+        assunto: c.Assunto,
+        cliente: c.cliente ?? null,
+        especialidade: c.especialidade ?? null,
+        uf: c.uf ?? null,
+        operador: [c.NomeOperador, c.SobrenomeOperador].filter(Boolean).join(" ") || "Sem operador",
+        dataCriacao: c.DataCriacao,
+        diasParado: diasEmAberto(c.DataCriacao, hoje),
+        causa: historico?.causa ?? null,
+        ics: historico?.ics ?? [],
+      };
+    })
+    .sort((a, b) => (b.diasParado ?? 0) - (a.diasParado ?? 0));
+
+  return {
+    total: itens.length,
+    diasParadoMaisAntigo: itens[0]?.diasParado ?? null,
+    itens,
+  };
+}
+
 // porCausa e aguardandoAprovacao.jaAvaliados só existem quando o chamado foi enriquecido
 // com histórico de interações (campo `causa`/`passouPorAguardandoAprovacao`) — ver historicoChamado.js.
 // Sem esse enriquecimento (rota rápida, sem custo de N chamadas ao MCP), ambos ficam null.

@@ -137,6 +137,11 @@ export default function Manutencao() {
                   label="Aguardando Peça"
                   value={detalhe.aguardandoPeca}
                   statusClass={detalhe.aguardandoPeca > 0 ? "status-warning" : undefined}
+                  meta={
+                    <Link to="/aguardando-peca" onClick={(e) => e.stopPropagation()}>
+                      Ver todos pendentes →
+                    </Link>
+                  }
                   onClick={() =>
                     drill.abrirLista({ ...filtroBase, status: STATUS_AGUARDANDO_PECA.join(",") }, "Aguardando Peça")
                   }

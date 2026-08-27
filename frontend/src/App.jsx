@@ -7,6 +7,7 @@ import Orcamento from "./pages/Orcamento.jsx";
 import Performance from "./pages/Performance.jsx";
 import ChamadosPrioritarios from "./pages/ChamadosPrioritarios.jsx";
 import ChamadosCondenados from "./pages/ChamadosCondenados.jsx";
+import ChamadosAguardandoPeca from "./pages/ChamadosAguardandoPeca.jsx";
 import Configuracoes from "./pages/Configuracoes.jsx";
 import logoEconomart from "./assets/economart-logo.png";
 
@@ -43,6 +44,9 @@ export default function App() {
           <NavLink to="/condenados" className={({ isActive }) => (isActive ? "active" : "")}>
             Condenados
           </NavLink>
+          <NavLink to="/aguardando-peca" className={({ isActive }) => (isActive ? "active" : "")}>
+            Aguardando Peça
+          </NavLink>
           <NavLink to="/configuracoes" className={({ isActive }) => (isActive ? "active" : "")}>
             Configurações
           </NavLink>
@@ -58,6 +62,7 @@ export default function App() {
         <Route path="/performance" element={<Performance />} />
         <Route path="/prioritarios" element={<ChamadosPrioritarios />} />
         <Route path="/condenados" element={<ChamadosCondenados />} />
+        <Route path="/aguardando-peca" element={<ChamadosAguardandoPeca />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
       </Routes>
     </div>

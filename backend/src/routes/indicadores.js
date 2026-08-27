@@ -15,6 +15,8 @@ import {
   listarPorCliente,
   buildCondenados,
   STATUS_CONDENADO,
+  buildAguardandoPeca,
+  STATUS_AGUARDANDO_PECA,
 } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento, buildResumoRapidoOrcamento, foiReprovado } from "../services/orcamento.js";
 import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
@@ -384,6 +386,23 @@ indicadoresRouter.get("/condenados", async (req, res) => {
     const historicoMap = await obterHistoricoEmLote(condenados, { forceRefresh });
 
     res.json(buildCondenados(condenados, historicoMap));
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+// Contraparte de /condenados pros 2 status de "parado esperando peça" — mesmo racional: sem
+// filtro de período, pra nunca perder de vista peça pendente de mês anterior.
+indicadoresRouter.get("/aguardando-peca", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    const semCancelados = excluirCancelados(chamados);
+    const pendentes = semCancelados.filter((c) => STATUS_AGUARDANDO_PECA.includes(c.NomeStatus));
+    const historicoMap = await obterHistoricoEmLote(pendentes, { forceRefresh });
+
+    res.json(buildAguardandoPeca(pendentes, historicoMap));
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
