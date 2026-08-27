@@ -24,8 +24,25 @@ export function MaximizableChart({
   fetcher,
   fullWidth = false,
   previewHeight = 220,
+  stacked = false,
+  labelKey = "total",
 }) {
   const drill = useDrillDown();
+
+  // Só existe quando "stacked" está ligado (aba "Todos") — mesmas 3 colunas já usadas nos
+  // níveis de loja em DrillDownContent.jsx, só que lendo direto de aprovadoValor/pendenteValor/
+  // reprovadoValor (os dados aqui já chegam achatados por RegiaoOrcamentoPanel).
+  const colunasOrcamento = stacked
+    ? [
+        { header: "Aprovado", render: (d) => (formatValue ? formatValue(d.aprovadoValor) : d.aprovadoValor), sortKeyName: "aprovadoValor" },
+        { header: "Pendente", render: (d) => (formatValue ? formatValue(d.pendenteValor) : d.pendenteValor), sortKeyName: "pendenteValor" },
+        {
+          header: "Reprovado",
+          render: (d) => (d.reprovadoValor > 0 ? (formatValue ? formatValue(d.reprovadoValor) : d.reprovadoValor) : "—"),
+          sortKeyName: "reprovadoValor",
+        },
+      ]
+    : undefined;
 
   return (
     <div className={`panel maximizable${fullWidth ? " full-width" : ""}`} onClick={() => !drill.pilha && drill.abrir()}>
@@ -43,6 +60,8 @@ export function MaximizableChart({
         height={previewHeight}
         formatValue={formatValue}
         agregarOutros={agregarOutros}
+        stacked={stacked}
+        labelKey={labelKey}
       />
 
       {drill.pilha !== null && (
@@ -81,6 +100,8 @@ export function MaximizableChart({
                     agregarOutros={agregarOutros}
                     onBarClick={selecionar}
                     formatValue={formatValue}
+                    stacked={stacked}
+                    labelKey={labelKey}
                   />
                 );
               }
@@ -95,9 +116,11 @@ export function MaximizableChart({
                     agregarOutros={agregarOutros}
                     onBarClick={selecionar}
                     formatValue={formatValue}
+                    stacked={stacked}
+                    labelKey={labelKey}
                   />
                   <h3 style={{ marginTop: 20 }}>Todos ({data.length})</h3>
-                  <RankingTable data={data} formatValue={formatValue} onSelecionar={selecionar} />
+                  <RankingTable data={data} formatValue={formatValue} onSelecionar={selecionar} colunasExtras={colunasOrcamento} />
                 </div>
               );
             })()}
