@@ -1,0 +1,17 @@
+name: Deploy no Render
+
+# Gatilho explícito de deploy, independente do webhook nativo GitHub->Render (Auto-Deploy do
+# Render pode não disparar em toda push — esse workflow garante o deploy chamando o Deploy
+# Hook diretamente). Requer o secret RENDER_DEPLOY_HOOK_URL configurado no repositório
+# (Settings -> Secrets and variables -> Actions), com a URL de Settings -> Deploy Hook do
+# serviço no Render.
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Chamar o Deploy Hook do Render
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
