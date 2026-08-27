@@ -7,16 +7,16 @@ const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", 
 // Um card por UF (hoje MG/BA) com o valor total em orçamento (pendente + avaliado). Clicar
 // num card revela o ranking de unidades daquele estado — a "visão visual pra decisão" pedida:
 // qual loja concentra mais orçamento dentro da região.
-export function RegiaoOrcamentoPanel({ porUf, porCliente, filtroBase }) {
+export function RegiaoOrcamentoPanel({ porUf, porLoja, filtroBase }) {
   const [regiaoSelecionada, setRegiaoSelecionada] = useState(null);
   const regioes = (porUf ?? []).filter((u) => u.uf !== "Não informado");
   if (regioes.length === 0) return null;
 
   const clientesDaRegiao = regiaoSelecionada
-    ? (porCliente ?? [])
-        .filter((c) => c.uf === regiaoSelecionada)
-        .map((c) => ({ label: c.cliente, total: c.aguardandoValor + c.avaliadosValor }))
-        .filter((c) => c.total > 0)
+    ? (porLoja ?? [])
+        .filter((l) => l.uf === regiaoSelecionada)
+        .map((l) => ({ label: l.cliente, total: l.aprovado.valor + l.pendente.valor, porEspecialidade: l.porEspecialidade }))
+        .filter((l) => l.total > 0)
         .sort((a, b) => b.total - a.total)
     : [];
 
