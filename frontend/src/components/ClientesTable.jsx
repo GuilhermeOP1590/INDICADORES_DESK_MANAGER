@@ -5,7 +5,7 @@ import { useDrillDown } from "../lib/useDrillDown.js";
 import { useSort } from "../lib/useSort.js";
 
 // Espelha OperadoresTable — mesmo racional, só que ranqueando cliente em vez de operador.
-export function ClientesTable({ data, filtroBase }) {
+export function ClientesTable({ data, filtroBase, fetcher }) {
   const drill = useDrillDown();
   const { sorted, sortKey, sortDir, toggleSort } = useSort(data, "total", "desc");
 
@@ -33,7 +33,7 @@ export function ClientesTable({ data, filtroBase }) {
             <tr
               key={c.cliente}
               className={filtroBase ? "clickable-row" : ""}
-              onClick={filtroBase ? () => drill.abrirLista({ ...filtroBase, cliente: c.cliente }, c.cliente) : undefined}
+              onClick={filtroBase ? () => drill.abrirLista({ ...filtroBase, cliente: c.cliente }, c.cliente, fetcher) : undefined}
             >
               <td>{c.cliente}</td>
               <td className="num">{c.total}</td>
