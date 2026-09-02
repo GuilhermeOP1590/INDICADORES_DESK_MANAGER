@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { StatTile } from "./StatTile.jsx";
+import { Modal } from "./Modal.jsx";
+import { ClientesTable } from "./ClientesTable.jsx";
 
 // Resume a tabela de clientes em alguns números que cabem numa olhada — mesmo racional do
 // TeamPerformanceCards, só que por cliente: quem gera mais demanda e quem está pior/melhor
 // em resolução, pra apontar onde vale a pena investigar primeiro.
-export function ClientePerformancePanel({ porCliente, porUf, onAbrirGeral, onAbrirCliente }) {
+export function ClientePerformancePanel({ porCliente, porUf, filtroBase, fetcher, onAbrirGeral, onAbrirCliente }) {
+  const [verRanking, setVerRanking] = useState(false);
   const clientes = (porCliente ?? []).filter((c) => c.cliente !== "Não informado");
   if (clientes.length === 0) return null;
 
@@ -47,7 +51,7 @@ export function ClientePerformancePanel({ porCliente, porUf, onAbrirGeral, onAbr
             ) : undefined
           }
           statusClass={percentualMedio >= 80 ? "status-good" : undefined}
-          onClick={onAbrirGeral}
+          onClick={() => setVerRanking(true)}
         />
         <StatTile
           label="Maior volume"
@@ -70,6 +74,12 @@ export function ClientePerformancePanel({ porCliente, porUf, onAbrirGeral, onAbr
           onClick={piorResolucao && onAbrirCliente ? () => onAbrirCliente(piorResolucao.cliente) : undefined}
         />
       </section>
+
+      {verRanking && (
+        <Modal title="% de resolução por loja" onClose={() => setVerRanking(false)}>
+          <ClientesTable data={clientes} filtroBase={filtroBase} fetcher={fetcher} />
+        </Modal>
+      )}
     </div>
   );
 }
