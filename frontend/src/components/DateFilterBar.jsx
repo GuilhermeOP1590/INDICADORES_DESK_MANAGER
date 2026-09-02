@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { periodoHoje, periodoOntem, periodoSemanaPassada, nomeMesFiscal } from "../lib/datas.js";
+import { periodoHoje, periodoOntem, periodoSemanaPassada, nomeMesFiscal, nomeMesCalendario } from "../lib/datas.js";
 import { useMesesFiscaisDisponiveis } from "../lib/useMesesFiscaisDisponiveis.js";
+import { useMesesCalendarioDisponiveis } from "../lib/useMesesCalendarioDisponiveis.js";
 
 const PRESETS = [
   { key: "hoje", label: "Hoje", calcular: periodoHoje },
@@ -9,9 +10,13 @@ const PRESETS = [
   { key: "personalizado", label: "Personalizado", calcular: null },
 ];
 
-export function DateFilterBar({ periodo, onChange }) {
+export function DateFilterBar({ periodo, onChange, modo = "criacao" }) {
   const [presetAtivo, setPresetAtivo] = useState("mes");
   const mesesFiscais = useMesesFiscaisDisponiveis();
+  const mesesCalendario = useMesesCalendarioDisponiveis();
+  const ehFiscal = modo === "criacao";
+  const meses = ehFiscal ? mesesFiscais : mesesCalendario;
+  const nomeMes = ehFiscal ? nomeMesFiscal : nomeMesCalendario;
 
   function selecionarPreset(preset) {
     setPresetAtivo(preset.key);
@@ -20,8 +25,8 @@ export function DateFilterBar({ periodo, onChange }) {
     }
   }
 
-  function selecionarMesFiscal(e) {
-    const mes = mesesFiscais.find((m) => m.label === e.target.value);
+  function selecionarMes(e) {
+    const mes = meses.find((m) => m.label === e.target.value);
     if (!mes) return;
     setPresetAtivo("mes");
     onChange({ dataInicio: mes.dataInicio, dataFim: mes.dataFim });
@@ -31,13 +36,13 @@ export function DateFilterBar({ periodo, onChange }) {
     <div className="date-filter-bar">
       <select
         className={`date-filter-select ${presetAtivo === "mes" ? "active" : ""}`}
-        value={presetAtivo === "mes" ? nomeMesFiscal(periodo) : ""}
-        onChange={selecionarMesFiscal}
+        value={presetAtivo === "mes" ? nomeMes(periodo) : ""}
+        onChange={selecionarMes}
       >
         <option value="" disabled>
-          Mês fiscal (26 a 25)
+          {ehFiscal ? "Mês fiscal (26 a 25)" : "Mês (01 ao fim)"}
         </option>
-        {mesesFiscais.map((mes) => (
+        {meses.map((mes) => (
           <option key={mes.label} value={mes.label}>
             {mes.label}
           </option>
@@ -54,11 +59,7 @@ export function DateFilterBar({ periodo, onChange }) {
       ))}
       {presetAtivo === "personalizado" && (
         <span className="date-filter-custom">
-          <input
-            type="date"
-            value={periodo.dataInicio ?? ""}
-            onChange={(e) => onChange({ ...periodo, dataInicio: e.target.value })}
-          />
+          <input type="date" value={periodo.dataInicio ?? ""} onChange={(e) => onChange({ ...periodo, dataInicio: e.target.value })} />
           <span>até</span>
           <input type="date" value={periodo.dataFim ?? ""} onChange={(e) => onChange({ ...periodo, dataFim: e.target.value })} />
         </span>
