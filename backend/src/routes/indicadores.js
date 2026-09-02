@@ -19,7 +19,7 @@ import {
   STATUS_AGUARDANDO_PECA,
 } from "../services/indicadoresPorTaxonomia.js";
 import { buildOrcamento, buildResumoRapidoOrcamento, foiReprovado } from "../services/orcamento.js";
-import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto } from "../services/filtros.js";
+import { excluirCancelados, filtrarPorData, filtrarPorUf, buscarPorTexto, ampliarParaTras, filtrarPorDataHistorico } from "../services/filtros.js";
 import { fetchDetalheChamado } from "../services/chamadoDetalhe.js";
 import { obterHistoricoEmLote } from "../services/historicoChamado.js";
 import { lerConfiguracao, salvarConfiguracao, classificarStatus } from "../services/configuracaoIndicadores.js";
@@ -451,20 +451,30 @@ indicadoresRouter.get("/orcamento/resumo-rapido", async (req, res) => {
   }
 });
 
+const MESES_LOOKBACK_HISTORICO = 3;
+const CAMPO_HISTORICO_POR_MODO = { aprovacao: "dataDecisao", insercao: "dataAprovacao" };
+
 indicadoresRouter.get("/orcamento", async (req, res) => {
   try {
     const forceRefresh = req.query.refresh === "true";
     const periodo = lerPeriodo(req);
     const especialidade = req.query.especialidade || "Geral";
+    const modoData = req.query.modoData || "criacao";
 
     const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
-    let noPeriodo = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(chamados), periodo), req.query.q), req.query.uf);
+    const periodoBusca = modoData === "criacao" ? periodo : ampliarParaTras(periodo, MESES_LOOKBACK_HISTORICO);
+    let candidatos = filtrarPorUf(buscarPorTexto(filtrarPorData(excluirCancelados(chamados), periodoBusca), req.query.q), req.query.uf);
     if (especialidade !== "Geral") {
-      noPeriodo = noPeriodo.filter((c) => c.especialidade === especialidade);
+      candidatos = candidatos.filter((c) => c.especialidade === especialidade);
     }
 
-    const historicoMap = await obterHistoricoEmLote(noPeriodo);
-    res.json({ especialidade, ...buildOrcamento(noPeriodo, historicoMap) });
+    const historicoMap = await obterHistoricoEmLote(candidatos);
+    const noPeriodo =
+      modoData === "criacao"
+        ? candidatos
+        : filtrarPorDataHistorico(candidatos, historicoMap, CAMPO_HISTORICO_POR_MODO[modoData], periodo);
+
+    res.json({ especialidade, modoData, ...buildOrcamento(noPeriodo, historicoMap) });
   } catch (error) {
     console.error(error);
     res.status(502).json({ erro: error.message });
