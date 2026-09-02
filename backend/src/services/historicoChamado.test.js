@@ -1,6 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { extrairIcs, extrairHorimetro, extrairNomeEmpresa, extrairTempoAguardandoPecaDias, ttlPara } from "./historicoChamado.js";
+import {
+  extrairIcs,
+  extrairHorimetro,
+  extrairNomeEmpresa,
+  extrairTempoAguardandoPecaDias,
+  extrairDataDecisao,
+  ttlPara,
+} from "./historicoChamado.js";
 
 test("ttlPara usa um TTL bem mais longo pra chamado finalizado do que pra chamado aberto", () => {
   assert.equal(ttlPara(false), 15 * 60 * 1000);
@@ -103,4 +110,44 @@ test("extrairTempoAguardandoPecaDias ignora interações sem DataAcao", () => {
     { Status: [{ text: "Resolvido" }], DataAcao: "10-08-2026" },
   ];
   assert.equal(extrairTempoAguardandoPecaDias(interacoes), 0);
+});
+
+test("extrairDataDecisao pega a data da primeira interação após sair de Aguardando Aprovação", () => {
+  const interacoes = [
+    { Status: [{ text: "Orçamento Reprovado" }], DataAcao: "03-09-2026" },
+    { Status: [{ text: "Aguardando Aprovação" }], DataAcao: "28-08-2026" },
+    { Status: [{ text: "Aberto" }], DataAcao: "20-08-2026" },
+  ];
+  assert.equal(extrairDataDecisao(interacoes), "2026-09-03");
+});
+
+test("extrairDataDecisao funciona igual pra aprovado (não filtra por status final, só pela transição)", () => {
+  const interacoes = [
+    { Status: [{ text: "Aprovado" }], DataAcao: "05-09-2026" },
+    { Status: [{ text: "Aguardando Aprovação" }], DataAcao: "01-09-2026" },
+  ];
+  assert.equal(extrairDataDecisao(interacoes), "2026-09-05");
+});
+
+test("extrairDataDecisao ignora status intermediários que não sejam Aguardando Aprovação", () => {
+  const interacoes = [
+    { Status: [{ text: "Finalizado" }], DataAcao: "10-09-2026" },
+    { Status: [{ text: "Em Execução" }], DataAcao: "06-09-2026" },
+    { Status: [{ text: "Aprovado" }], DataAcao: "05-09-2026" },
+    { Status: [{ text: "Aguardando Aprovação" }], DataAcao: "01-09-2026" },
+  ];
+  assert.equal(extrairDataDecisao(interacoes), "2026-09-05");
+});
+
+test("extrairDataDecisao retorna null quando o chamado nunca passou por Aguardando Aprovação", () => {
+  const interacoes = [{ Status: [{ text: "Finalizado" }], DataAcao: "10-09-2026" }];
+  assert.equal(extrairDataDecisao(interacoes), null);
+});
+
+test("extrairDataDecisao retorna null quando o chamado ainda está Aguardando Aprovação (não decidido)", () => {
+  const interacoes = [
+    { Status: [{ text: "Aguardando Aprovação" }], DataAcao: "01-09-2026" },
+    { Status: [{ text: "Aberto" }], DataAcao: "20-08-2026" },
+  ];
+  assert.equal(extrairDataDecisao(interacoes), null);
 });

@@ -102,6 +102,27 @@ function extrairDataAprovacao(interacoes) {
   return paraIso(comValor.DataAcao);
 }
 
+// Pega a data em que o chamado DEIXOU "Aguardando Aprovação" pela primeira vez — é a decisão
+// real (aprovado ou reprovado), diferente de dataAprovacao (que é quando o valor foi lançado,
+// pedindo aprovação — pode ser dias antes da decisão em si). Interações vêm da mais recente pra
+// mais antiga; inverte pra varrer em ordem cronológica, mesmo padrão de
+// extrairTempoAguardandoPecaDias.
+export function extrairDataDecisao(interacoes) {
+  const cronologico = [...interacoes].reverse();
+  let passouPorAguardando = false;
+  for (const interacao of cronologico) {
+    const status = interacao.Status?.[0]?.text;
+    if (status === "Aguardando Aprovação") {
+      passouPorAguardando = true;
+      continue;
+    }
+    if (passouPorAguardando && interacao.DataAcao) {
+      return paraIso(interacao.DataAcao);
+    }
+  }
+  return null;
+}
+
 // Junta os Ics de TODAS as interações da chamada (não só a mais recente) — o mesmo chamado
 // pode referenciar o equipamento em ações diferentes ao longo do atendimento. O formato
 // observado é um valor só; a separação por vírgula/ponto-e-vírgula é proteção defensiva caso
@@ -172,6 +193,7 @@ export async function obterHistoricoChamado({ chave, codChamado, finalizado = fa
     valorAprovacao: extrairValorAprovacao(interacoes),
     nomeEmpresa: extrairNomeEmpresa(interacoes),
     dataAprovacao: extrairDataAprovacao(interacoes),
+    dataDecisao: extrairDataDecisao(interacoes),
     ics: extrairIcs(interacoes),
     horimetro: extrairHorimetro(interacoes),
     tempoAguardandoPecaDias: extrairTempoAguardandoPecaDias(interacoes),
@@ -207,6 +229,7 @@ export async function obterHistoricoEmLote(chamados, { concorrencia = 60, forceR
       valorAprovacao: null,
       nomeEmpresa: null,
       dataAprovacao: null,
+      dataDecisao: null,
       ics: [],
       horimetro: null,
       tempoAguardandoPecaDias: 0,
