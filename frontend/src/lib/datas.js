@@ -99,6 +99,31 @@ export function listaMesesFiscais(qtd = 15) {
   return lista;
 }
 
+// Mês calendário cheio (dia 01 ao último dia) — diferente do ciclo fiscal (26→25) usado pro modo
+// "Criação". `deslocamento` em meses (negativo = passado), mesmo padrão de deslocarMeses.
+export function periodoMesCalendario(deslocamento = 0) {
+  const hoje = new Date();
+  const inicio = new Date(hoje.getFullYear(), hoje.getMonth() + deslocamento, 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + deslocamento + 1, 0);
+  return { dataInicio: formatISO(inicio), dataFim: formatISO(fim) };
+}
+
+export function nomeMesCalendario(periodo) {
+  const [ano, mes] = periodo.dataInicio.split("-").map(Number);
+  return `${MESES_ABREV[mes - 1]}/${String(ano).slice(2)}`;
+}
+
+// Lista os últimos `qtd` meses calendário (mais recente primeiro) — mesmo papel de
+// listaMesesFiscais, mas pro seletor de mês cheio.
+export function listaMesesCalendario(qtd = 15) {
+  const lista = [];
+  for (let i = 0; i < qtd; i++) {
+    const periodo = periodoMesCalendario(-i);
+    lista.push({ ...periodo, label: nomeMesCalendario(periodo) });
+  }
+  return lista;
+}
+
 function inicioDaSemana(iso) {
   const [ano, mes, dia] = iso.split("-").map(Number);
   const data = new Date(ano, mes - 1, dia);
