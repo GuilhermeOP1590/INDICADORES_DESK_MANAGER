@@ -15,12 +15,18 @@ import { DrillDownContent } from "../components/DrillDownContent.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
 import { useUfsDisponiveis } from "../lib/useUfsDisponiveis.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
-import { periodoMesFiscal, deslocarMeses, formatBR } from "../lib/datas.js";
+import { periodoMesFiscal, periodoMesCalendario, deslocarMeses, formatBR } from "../lib/datas.js";
 
 const ABAS = [
   { value: "Geral", label: "Geral" },
   { value: "Manutenção", label: "Manutenção" },
   { value: "Engenharia", label: "Engenharia" },
+];
+
+const MODOS_DATA = [
+  { value: "criacao", label: "Criação", calcularPeriodo: periodoMesFiscal },
+  { value: "aprovacao", label: "Aprovação", calcularPeriodo: () => periodoMesCalendario(0) },
+  { value: "insercao", label: "Orçamento inserido", calcularPeriodo: () => periodoMesCalendario(0) },
 ];
 
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -31,6 +37,7 @@ function labelPeriodo(periodo) {
 
 export default function Orcamento() {
   const [aba, setAba] = useState("Geral");
+  const [modoData, setModoData] = useState("criacao");
   const [periodo, setPeriodo] = useState(periodoMesFiscal());
   const [buscaInput, setBuscaInput] = useState("");
   const busca = useDebouncedValue(buscaInput);
@@ -40,11 +47,22 @@ export default function Orcamento() {
   const drill = useDrillDown();
   const ufsDisponiveis = useUfsDisponiveis();
 
+  // Reseta o período pro tipo de mês certo (fiscal pra criação, calendário cheio pros outros 2)
+  // sempre que o modo muda — sem isso, trocar de "Criação" pra "Aprovação" manteria um período de
+  // ciclo fiscal (26→25) aplicado a um filtro que deveria ser mês cheio (01 a 30).
+  function selecionarModoData(modo) {
+    if (modo === modoData) return;
+    setModoData(modo);
+    setPeriodo(MODOS_DATA.find((m) => m.value === modo).calcularPeriodo());
+    if (modo !== "criacao") setResumoRapido({ status: "idle", dados: null, error: null });
+  }
+
   const [comparando, setComparando] = useState(false);
   const [periodoComparacao, setPeriodoComparacao] = useState(deslocarMeses(periodoMesFiscal(), -1));
   const [comparacao, setComparacao] = useState({ status: "idle", payload: null, error: null });
 
   async function carregarResumoRapido(forceRefresh = false) {
+    if (modoData !== "criacao") return;
     setResumoRapido((s) => ({ ...s, status: "loading" }));
     try {
       const dados = await fetchOrcamentoResumoRapido({
@@ -63,7 +81,14 @@ export default function Orcamento() {
   async function load(forceRefresh = false) {
     setState((s) => ({ ...s, status: "loading" }));
     try {
-      const payload = await fetchOrcamento({ forceRefresh, especialidade: aba, ...periodo, q: busca || undefined, uf: uf || undefined });
+      const payload = await fetchOrcamento({
+        forceRefresh,
+        especialidade: aba,
+        modoData,
+        ...periodo,
+        q: busca || undefined,
+        uf: uf || undefined,
+      });
       setState({ status: "ready", payload, error: null });
     } catch (error) {
       setState({ status: "error", payload: null, error: error.message });
@@ -74,7 +99,7 @@ export default function Orcamento() {
     carregarResumoRapido();
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aba, periodo.dataInicio, periodo.dataFim, busca, uf]);
+  }, [aba, modoData, periodo.dataInicio, periodo.dataFim, busca, uf]);
 
   useEffect(() => {
     if (!comparando) return;
@@ -114,8 +139,19 @@ export default function Orcamento() {
 
   return (
     <div>
+      <section className="stat-grid">
+        {MODOS_DATA.map((m) => (
+          <StatTile
+            key={m.value}
+            value={m.label}
+            statusClass={modoData === m.value ? "status-good" : undefined}
+            onClick={() => selecionarModoData(m.value)}
+          />
+        ))}
+      </section>
+
       <div className="page-toolbar">
-        <DateFilterBar periodo={periodo} onChange={setPeriodo} />
+        <DateFilterBar periodo={periodo} onChange={setPeriodo} modo={modoData} />
         <button
           className="refresh-btn"
           onClick={() => {
@@ -127,6 +163,13 @@ export default function Orcamento() {
           {state.status === "loading" ? "Atualizando..." : "Atualizar agora"}
         </button>
       </div>
+
+      {modoData !== "criacao" && (
+        <p className="subtitle" style={{ marginTop: -8, marginBottom: 12 }}>
+          Filtrando por {modoData === "aprovacao" ? "mês de aprovação" : "mês em que o orçamento foi inserido"} — a busca
+          inicial pode levar mais tempo (procura também chamados criados um pouco antes do período).
+        </p>
+      )}
 
       <div className="filter-bar">
         <input
