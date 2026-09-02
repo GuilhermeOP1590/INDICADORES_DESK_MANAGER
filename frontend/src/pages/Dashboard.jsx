@@ -250,6 +250,8 @@ export default function Dashboard() {
           <ClientePerformancePanel
             porCliente={porCliente}
             porUf={porUf}
+            filtroBase={filtroBase}
+            fetcher={fetchDashboardChamados}
             onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período", fetchDashboardChamados)}
             onAbrirCliente={(cliente) => drill.abrirLista({ ...filtroBase, cliente }, cliente, fetchDashboardChamados)}
           />

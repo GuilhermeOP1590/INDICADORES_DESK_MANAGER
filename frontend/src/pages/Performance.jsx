@@ -129,6 +129,7 @@ export default function Performance() {
 
           <ClientePerformancePanel
             porCliente={porCliente}
+            filtroBase={filtroBase}
             onAbrirGeral={() => drill.abrirLista(filtroBase, "Total no período")}
             onAbrirCliente={(cliente) => drill.abrirLista({ ...filtroBase, cliente }, cliente)}
           />
