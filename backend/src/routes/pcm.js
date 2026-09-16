@@ -5,6 +5,7 @@ import { listarGrupos, listarPessoasGrupo, criarGrupo, definirGrupoDaPessoa } fr
 import { excluirCancelados } from "../services/filtros.js";
 import { isFinalizado } from "../services/indicadores.js";
 import { atribuicaoDoChamado, resolverAtribuicaoEfetiva, salvarAtribuicao } from "../services/pcmAtribuicoes.js";
+import { buildIndicadorPorGrupo, buildIndicadorPorPessoa } from "../services/pcmAtribuicoes.js";
 import { classificarPrazo } from "../services/prazo.js";
 import { grupoDaPessoa } from "../services/pcmPessoas.js";
 
@@ -154,5 +155,44 @@ pcmRouter.put("/pcm/atribuicoes/:codChamado", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ erro: error.message });
+  }
+});
+
+pcmRouter.get("/pcm/indicador-grupo", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { situacao } = req.query;
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+
+    let filtrados = excluirCancelados(chamados);
+    if (situacao === "aberto") filtrados = filtrados.filter((c) => !isFinalizado(c));
+    if (situacao === "fechado") filtrados = filtrados.filter((c) => isFinalizado(c));
+
+    res.json({ porGrupo: buildIndicadorPorGrupo(filtrados.map(linhaAtribuicao)) });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
+  }
+});
+
+pcmRouter.get("/pcm/indicador-pessoa", async (req, res) => {
+  try {
+    const forceRefresh = req.query.refresh === "true";
+    const { situacao, grupo } = req.query;
+
+    if (!grupo) {
+      res.status(400).json({ erro: "Parâmetro grupo é obrigatório" });
+      return;
+    }
+
+    const { chamados } = await carregarChamadosEnriquecidos({ forceRefresh });
+    let filtrados = excluirCancelados(chamados);
+    if (situacao === "aberto") filtrados = filtrados.filter((c) => !isFinalizado(c));
+    if (situacao === "fechado") filtrados = filtrados.filter((c) => isFinalizado(c));
+
+    res.json({ grupo, porPessoa: buildIndicadorPorPessoa(filtrados.map(linhaAtribuicao), grupo) });
+  } catch (error) {
+    console.error(error);
+    res.status(502).json({ erro: error.message });
   }
 });

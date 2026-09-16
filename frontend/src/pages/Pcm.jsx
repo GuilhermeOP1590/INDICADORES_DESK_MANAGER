@@ -3,9 +3,11 @@ import { useState } from "react";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { PcmPessoasTab } from "../components/PcmPessoasTab.jsx";
 import { PcmAtribuicoesTab } from "../components/PcmAtribuicoesTab.jsx";
+import { PcmPorGrupoTab } from "../components/PcmPorGrupoTab.jsx";
 
 const TABS = [
   { value: "atribuicoes", label: "Atribuições" },
+  { value: "porGrupo", label: "Por grupo" },
   { value: "pessoas", label: "Pessoas/Grupos" },
 ];
 
@@ -33,9 +35,12 @@ export default function Pcm() {
 
       <SubTabs options={TABS} active={aba} onChange={setAba} />
 
-      {aba === "atribuicoes" && <SubTabs options={FILTROS_SITUACAO} active={situacao} onChange={setSituacao} />}
+      {(aba === "atribuicoes" || aba === "porGrupo") && (
+        <SubTabs options={FILTROS_SITUACAO} active={situacao} onChange={setSituacao} />
+      )}
 
       {aba === "atribuicoes" && <PcmAtribuicoesTab situacao={situacaoQuery} />}
+      {aba === "porGrupo" && <PcmPorGrupoTab situacao={situacaoQuery} />}
       {aba === "pessoas" && <PcmPessoasTab />}
     </div>
   );

@@ -196,3 +196,11 @@ export async function salvarPcmAtribuicao(codChamado, dados) {
   if (!response.ok) throw new Error(data.erro || "Falha ao salvar atribuição");
   return data;
 }
+
+export function fetchPcmIndicadorGrupo(opts) {
+  return getJson("/api/pcm/indicador-grupo", opts ?? {});
+}
+
+export function fetchPcmIndicadorPessoa(opts) {
+  return getJson("/api/pcm/indicador-pessoa", opts ?? {});
+}
