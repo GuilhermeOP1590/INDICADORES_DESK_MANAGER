@@ -10,6 +10,7 @@ import { inicializar as inicializarPrioridades } from "./services/prioridades.js
 import { inicializar as inicializarConfiguracaoEquipamentos } from "./services/configuracaoEquipamentos.js";
 import { inicializar as inicializarConfiguracaoIndicadores } from "./services/configuracaoIndicadores.js";
 import { inicializar as inicializarPcmPessoas } from "./services/pcmPessoas.js";
+import { inicializar as inicializarPcmAtribuicoes } from "./services/pcmAtribuicoes.js";
 
 const app = express();
 
@@ -49,6 +50,7 @@ try {
     inicializarConfiguracaoEquipamentos(),
     inicializarConfiguracaoIndicadores(),
     inicializarPcmPessoas(),
+    inicializarPcmAtribuicoes(),
   ]);
 } catch (error) {
   console.error("Falha ao inicializar configurações a partir do Supabase:", error);
