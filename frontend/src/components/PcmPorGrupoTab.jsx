@@ -1,9 +1,11 @@
 // frontend/src/components/PcmPorGrupoTab.jsx
 import { useEffect, useState } from "react";
-import { fetchPcmIndicadorGrupo, fetchPcmIndicadorPessoa } from "../api.js";
+import { fetchPcmIndicadorGrupo, fetchPcmIndicadorPessoa, fetchPcmAtribuicoes } from "../api.js";
 import { StatTile } from "./StatTile.jsx";
 import { Modal } from "./Modal.jsx";
 import { PcmListaSimples } from "./PcmListaSimples.jsx";
+import { exportarLinhas } from "../lib/exportExcel.js";
+import { COLUNAS_EXPORT_PCM, prepararLinhasExportPcm } from "../lib/pcmColunasExport.js";
 
 const URGENCIAS_COLUNAS = ["Crítica", "Alta", "Média", "Baixa", "Não classificado"];
 
@@ -29,6 +31,11 @@ export function PcmPorGrupoTab({ situacao }) {
       .catch((error) => setPessoas({ status: "error", porPessoa: [], error: error.message }));
   }
 
+  async function exportarGrupo() {
+    const { chamados } = await fetchPcmAtribuicoes({ situacao, grupo: grupoAberto });
+    exportarLinhas(prepararLinhasExportPcm(chamados), COLUNAS_EXPORT_PCM, `pcm-${grupoAberto}`);
+  }
+
   if (state.status === "loading") return <p className="subtitle">Carregando indicador por grupo...</p>;
   if (state.status === "error") return <div className="state-banner error">Erro: {state.error}</div>;
 
@@ -49,7 +56,12 @@ export function PcmPorGrupoTab({ situacao }) {
 
       {grupoAberto && (
         <div className="panel full-width">
-          <h3>{grupoAberto}</h3>
+          <div className="page-toolbar">
+            <h3 style={{ margin: 0 }}>{grupoAberto}</h3>
+            <button className="refresh-btn" onClick={exportarGrupo}>
+              Exportar Excel
+            </button>
+          </div>
           {pessoas.status === "loading" && <p className="subtitle">Carregando pessoas...</p>}
           {pessoas.status === "error" && <div className="state-banner error">Erro: {pessoas.error}</div>}
           {pessoas.status === "ready" && (

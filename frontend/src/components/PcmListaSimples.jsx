@@ -1,6 +1,8 @@
 // frontend/src/components/PcmListaSimples.jsx
 import { useEffect, useState } from "react";
 import { fetchPcmAtribuicoes } from "../api.js";
+import { exportarLinhas } from "../lib/exportExcel.js";
+import { COLUNAS_EXPORT_PCM, prepararLinhasExportPcm } from "../lib/pcmColunasExport.js";
 
 // Lista somente-leitura de chamados filtrada por grupo/pessoa/urgência — aberta ao clicar
 // numa célula da matriz Pessoa × Urgência (PcmPorGrupoTab). Edição continua só na aba
@@ -31,27 +33,36 @@ export function PcmListaSimples({ filtros }) {
   if (state.chamados.length === 0) return <p className="subtitle">Nenhum chamado encontrado.</p>;
 
   return (
-    <table>
-      <thead>
-        <tr>
-          <th>Código</th>
-          <th>Assunto</th>
-          <th>Status</th>
-          <th>Pessoa</th>
-          <th>Urgência</th>
-        </tr>
-      </thead>
-      <tbody>
-        {state.chamados.map((c) => (
-          <tr key={c.codChamado}>
-            <td>{c.codChamado}</td>
-            <td>{c.assunto}</td>
-            <td>{c.status}</td>
-            <td>{c.pessoa ?? "—"}</td>
-            <td>{c.urgencia ?? "—"}</td>
+    <div>
+      <button
+        className="refresh-btn"
+        style={{ marginBottom: 8 }}
+        onClick={() => exportarLinhas(prepararLinhasExportPcm(state.chamados), COLUNAS_EXPORT_PCM, "pcm-chamados")}
+      >
+        Exportar Excel
+      </button>
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Assunto</th>
+            <th>Status</th>
+            <th>Pessoa</th>
+            <th>Urgência</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {state.chamados.map((c) => (
+            <tr key={c.codChamado}>
+              <td>{c.codChamado}</td>
+              <td>{c.assunto}</td>
+              <td>{c.status}</td>
+              <td>{c.pessoa ?? "—"}</td>
+              <td>{c.urgencia ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
