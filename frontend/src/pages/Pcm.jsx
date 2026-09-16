@@ -2,11 +2,23 @@
 import { useState } from "react";
 import { SubTabs } from "../components/SubTabs.jsx";
 import { PcmPessoasTab } from "../components/PcmPessoasTab.jsx";
+import { PcmAtribuicoesTab } from "../components/PcmAtribuicoesTab.jsx";
 
-const TABS = [{ value: "pessoas", label: "Pessoas/Grupos" }];
+const TABS = [
+  { value: "atribuicoes", label: "Atribuições" },
+  { value: "pessoas", label: "Pessoas/Grupos" },
+];
+
+const FILTROS_SITUACAO = [
+  { value: "aberto", label: "Aberto" },
+  { value: "fechado", label: "Fechado" },
+  { value: "todos", label: "Todos" },
+];
 
 export default function Pcm() {
-  const [aba, setAba] = useState("pessoas");
+  const [aba, setAba] = useState("atribuicoes");
+  const [situacao, setSituacao] = useState("aberto");
+  const situacaoQuery = situacao === "todos" ? "" : situacao;
 
   return (
     <div>
@@ -21,6 +33,9 @@ export default function Pcm() {
 
       <SubTabs options={TABS} active={aba} onChange={setAba} />
 
+      {aba === "atribuicoes" && <SubTabs options={FILTROS_SITUACAO} active={situacao} onChange={setSituacao} />}
+
+      {aba === "atribuicoes" && <PcmAtribuicoesTab situacao={situacaoQuery} />}
       {aba === "pessoas" && <PcmPessoasTab />}
     </div>
   );

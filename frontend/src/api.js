@@ -181,3 +181,18 @@ export async function salvarPcmPessoaGrupo(pessoa, grupo) {
   if (!response.ok) throw new Error(data.erro || "Falha ao salvar grupo da pessoa");
   return data;
 }
+
+export function fetchPcmAtribuicoes(opts) {
+  return getJson("/api/pcm/atribuicoes", opts ?? {});
+}
+
+export async function salvarPcmAtribuicao(codChamado, dados) {
+  const response = await fetch(`/api/pcm/atribuicoes/${encodeURIComponent(codChamado)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(dados),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao salvar atribuição");
+  return data;
+}
