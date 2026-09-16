@@ -54,6 +54,13 @@ Dashboard/Manutenção/Engenharia/Performance).
   disponível tanto na visão de um **grupo** quanto na de uma **pessoa**,
   sempre com os dados completos — mesmo que isso demore mais (ver seção
   "Exportação Excel" abaixo). Usuário confirmou que aceita a espera.
+- **Filtro Aberto/Fechado/Todos**, compartilhado pela aba "Atribuições" e
+  pela aba "Por grupo" (mesmo filtro, aplicado nas duas). Padrão: **Aberto**
+  — o objetivo principal é ver a carga de trabalho atual, não acumular
+  chamados já resolvidos pra sempre nos indicadores por pessoa.
+- **Sistema não tem login** — mesmo padrão do resto do app (lista única e
+  compartilhada, sem usuário/senha). Não faz parte deste projeto introduzir
+  autenticação.
 
 ## Modelo de dados (Supabase)
 
@@ -92,6 +99,16 @@ create table pcm_atribuicoes_chamados (
 
 Só existe uma linha em `pcm_atribuicoes_chamados` **quando o PCM edita algo**
 naquele chamado — chamados intocados não geram linha.
+
+> **Atenção pra quem for implementar:** a coluna "Distribuição" do Desk
+> Manager mostra a pessoa **e**, embaixo, um nome de fila/time que já existe
+> dentro do próprio Desk (ex: "MANUTENÇÃO - GERAL", "CORRETIVAS BA",
+> "REFRIGERAÇÃO MG" — categorias internas do Desk por tipo/região de
+> atividade, visíveis no menu lateral do sistema). **Isso não é o "grupo"**
+> que este projeto define (Manutenção/Engenharia/SESMT como times de
+> pessoas do PCM). `distribuicaoSistema` extrai só o **nome da pessoa** da
+> primeira linha — a fila do Desk é ignorada; o grupo usado em todo o
+> painel PCM vem exclusivamente de `pcm_pessoas_grupo`.
 
 **Regra de exibição/agregação** (usada tanto na tabela principal quanto nos
 indicadores):
@@ -133,19 +150,27 @@ indicadores):
 - `frontend/src/pages/Pcm.jsx` + `NavLink`/`<Route path="/pcm">` em
   `App.jsx` (nova aba na navegação principal, ao lado de Performance).
 - Sub-abas dentro da página:
+  - Filtro **Aberto/Fechado/Todos** no topo da página (acima das sub-abas,
+    ao lado de "PCM"), compartilhado por "Atribuições" e "Por grupo" — só
+    no cliente (mesmo dataset já carregado), padrão **Aberto**. Segue o
+    mesmo binário `isFinalizado` já usado em Chamados Prioritários (não as
+    4 categorias finas de situação).
   - **"Atribuições"** — 4 `StatTile` no topo (Atrasados · Vence esta semana
     · No prazo · Sem data) + tabela com edição inline (dropdown de grupo,
     dropdown de urgência, input de observação, date picker de data
     prevista, badge colorido de status de prazo, ícone 🖥/✋ de origem).
     Clicar num `StatTile` filtra a tabela.
-  - **"Por grupo"** — Nível 1: cards por grupo. Nível 2 (ao clicar num
-    card): matriz Pessoa × Urgência daquele grupo, com botão "Exportar
-    Excel" (grupo inteiro) e, ao clicar numa linha de pessoa, abre a lista
-    de chamados daquela pessoa com seu próprio botão "Exportar Excel".
+  - **"Por grupo"** — Nível 1: cards por grupo (contagem já respeitando o
+    filtro Aberto/Fechado/Todos ativo). Nível 2 (ao clicar num card): matriz
+    Pessoa × Urgência daquele grupo, com botão "Exportar Excel" (grupo
+    inteiro) e, ao clicar numa linha de pessoa, abre a lista de chamados
+    daquela pessoa com seu próprio botão "Exportar Excel".
   - **"Pessoas/Grupos"** — tela de configuração: lista de pessoas (busca
     puxando do Desk, mesmo dataset já usado pra `distribuicaoSistema`) +
     seletor de grupo pra cada uma. Mesmo padrão visual da configuração de
-    equipamentos já existente.
+    equipamentos já existente. Pessoas detectadas na Distribuição do Desk
+    que ainda não têm grupo definido aparecem destacadas no topo da lista
+    (não é preciso caçar manualmente quem falta classificar).
 - `frontend/src/api.js` — funções novas seguindo o padrão existente
   (`fetchPcmAtribuicoes`, `salvarPcmAtribuicao`, `fetchPcmPessoasGrupo`,
   `salvarPcmPessoaGrupo`, `fetchPcmIndicadorGrupo`, `fetchPcmExportar`).
@@ -176,6 +201,24 @@ individualmente:
   completo) · Solicitante · Loja/Cliente · UF · Data de criação · Status
   do chamado · Distribuição (origem + nome) · Grupo · Urgência ·
   Observação do PCM · Data prevista de solução · Status de prazo.
+
+## Testes
+
+Seguindo a convenção já usada no projeto (`node:test`, um arquivo
+`*.test.js` por serviço, cobrindo só a lógica pura — sem framework de teste
+no frontend, verificação manual no navegador):
+
+- `backend/src/services/prazo.test.js` — `classificarPrazo`: atrasado, vence
+  esta semana (limites segunda/domingo), no prazo, sem data.
+- `backend/src/services/pcmAtribuicoes.test.js` — upsert por `cod_chamado`
+  (cria novo, atualiza existente), `buildIndicadorPorGrupo`/
+  `buildIndicadorPorPessoa` (contagem por urgência, bucket "Sem urgência
+  definida", respeita filtro aberto/fechado recebido).
+- `backend/src/services/pcmPessoas.test.js` — upsert de grupo por pessoa,
+  leitura com tabela vazia (retorna lista vazia, não erro).
+- `backend/src/services/enriquecimento.test.js` (adiciona casos) — anexa
+  `distribuicaoSistema` extraindo só o nome da pessoa, ignorando a
+  fila/time do Desk (ver aviso na seção "Modelo de dados").
 
 ## Fora de escopo (YAGNI por agora)
 
