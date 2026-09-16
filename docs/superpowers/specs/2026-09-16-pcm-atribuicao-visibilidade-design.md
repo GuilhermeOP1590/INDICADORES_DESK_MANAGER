@@ -79,16 +79,23 @@ race conditions e é o padrão correto pra esse volume/formato de escrita
 (confirmado com a skill de boas práticas de Postgres do Supabase).
 
 ```sql
+create table pcm_grupos (
+  nome text primary key,
+  criado_em timestamptz not null default now()
+);
+
+insert into pcm_grupos (nome) values ('Manutenção'), ('Engenharia'), ('SESMT');
+
 create table pcm_pessoas_grupo (
   chave_pessoa text primary key,  -- identificador estável vindo do Desk (não o nome puro — evita colisão de homônimos; nome exato do campo é descoberto na implementação, ver Pendências Técnicas)
   nome text not null,             -- cache de exibição
-  grupo text not null,
+  grupo text not null references pcm_grupos (nome),
   atualizado_em timestamptz not null default now()
 );
 
 create table pcm_atribuicoes_chamados (
   cod_chamado text primary key,
-  grupo text not null,
+  grupo text not null references pcm_grupos (nome),
   pessoa text not null,           -- chave_pessoa de pcm_pessoas_grupo
   urgencia text not null check (urgencia in ('Crítica', 'Alta', 'Média', 'Baixa')),
   observacao text,
@@ -96,6 +103,13 @@ create table pcm_atribuicoes_chamados (
   atualizado_em timestamptz not null default now()
 );
 ```
+
+`pcm_grupos` já nasce com os 3 grupos citados na conversa (Manutenção,
+Engenharia, SESMT), mas **não é uma lista fixa** — é editável pela tela
+"Pessoas/Grupos" (ver Frontend abaixo), exatamente como a lista `grupos` de
+`configuracaoEquipamentos.js` já é hoje. A referência (`references
+pcm_grupos (nome)`) garante que ningém consiga atribuir pessoa/chamado a um
+grupo que não existe.
 
 Só existe uma linha em `pcm_atribuicoes_chamados` **quando o PCM edita algo**
 naquele chamado — chamados intocados não geram linha.
@@ -126,8 +140,10 @@ indicadores):
 ## Backend
 
 **Novo:**
-- `backend/src/services/pcmPessoas.js` — ler/upsert `pcm_pessoas_grupo`
-  (mesmo padrão de client Supabase já usado em `prioridades.js`).
+- `backend/src/services/pcmPessoas.js` — ler/upsert `pcm_pessoas_grupo` +
+  ler/criar `pcm_grupos` (`listarGrupos()`, `criarGrupo(nome)` — insere
+  ignorando duplicata, mesmo padrão de `adicionarGrupo` já usado na
+  configuração de equipamentos, mas gravando em tabela em vez de array).
 - `backend/src/services/pcmAtribuicoes.js` — ler/upsert
   `pcm_atribuicoes_chamados` (upsert unitário por `cod_chamado`,
   `insert ... on conflict`) + `buildIndicadorPorGrupo(chamados)` /
@@ -171,6 +187,12 @@ indicadores):
     equipamentos já existente. Pessoas detectadas na Distribuição do Desk
     que ainda não têm grupo definido aparecem destacadas no topo da lista
     (não é preciso caçar manualmente quem falta classificar).
+    - **Criar novo grupo:** campo "Nome do novo grupo..." + botão "+ Novo
+      grupo", reaproveitando exatamente a UX que já existe em
+      `ConfiguracaoEquipamentos.jsx` (input + `adicionarGrupo()`) — só que
+      aqui grava em `pcm_grupos` em vez de num array dentro de um blob.
+      Assim que criado, o grupo já aparece no seletor de qualquer pessoa
+      (e, depois, no dropdown de grupo da tabela "Atribuições").
 - `frontend/src/api.js` — funções novas seguindo o padrão existente
   (`fetchPcmAtribuicoes`, `salvarPcmAtribuicao`, `fetchPcmPessoasGrupo`,
   `salvarPcmPessoaGrupo`, `fetchPcmIndicadorGrupo`, `fetchPcmExportar`).
