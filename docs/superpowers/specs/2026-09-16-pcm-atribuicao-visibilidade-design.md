@@ -40,9 +40,19 @@ Dashboard/Manutenção/Engenharia/Performance).
 - Observação do PCM é **texto livre**.
 - **Onde vive:** página nova e dedicada **"PCM"** na navegação (não dentro
   de Manutenção/Engenharia) — reúne as duas áreas numa visão só.
-- **Edição:** inline, direto nas células da tabela (dropdown de grupo/
-  urgência, input de observação, date picker de data prevista) — salva ao
-  trocar, sem botão "Salvar" separado.
+- **Edição:** inline, direto nas células da tabela (dropdown de urgência,
+  input de observação, date picker de data prevista) — salva ao trocar,
+  sem botão "Salvar" separado. **Grupo não é editável por chamado** — é
+  sempre derivado da pessoa (que pertence a um único grupo, definido na
+  aba "Pessoas/Grupos"); editar o grupo de um chamado individualmente
+  quebraria essa regra e poderia deixar o mesmo grupo com significados
+  diferentes em telas diferentes. Editar qualquer um dos 3 campos acima
+  já é suficiente pra marcar o chamado como "✋ Atribuído pelo PCM" —
+  não é preciso reatribuir pessoa/grupo pra isso.
+- Se a pessoa que está com o chamado (distribuição do sistema) ainda não
+  tem grupo mapeado ("Sem grupo definido"), a edição inline é bloqueada
+  com uma mensagem pedindo pra mapear essa pessoa primeiro na aba
+  "Pessoas/Grupos" — evita salvar uma atribuição sem grupo válido.
 - **Indicador em 2 níveis**, pra não virar uma lista ilegível quando um
   grupo tiver muita gente:
   - Nível 1 — cards por grupo (total de pessoas + breakdown por urgência).
@@ -183,9 +193,10 @@ indicadores):
     mesmo binário `isFinalizado` já usado em Chamados Prioritários (não as
     4 categorias finas de situação).
   - **"Atribuições"** — 4 `StatTile` no topo (Atrasados · Vence esta semana
-    · No prazo · Sem data) + tabela com edição inline (dropdown de grupo,
-    dropdown de urgência, input de observação, date picker de data
-    prevista, badge colorido de status de prazo, ícone 🖥/✋ de origem).
+    · No prazo · Sem data) + tabela com coluna "Grupo" somente leitura
+    (derivada da pessoa) e edição inline nas 3 colunas que o PCM controla
+    (dropdown de urgência, input de observação, date picker de data
+    prevista), badge colorido de status de prazo, ícone 🖥/✋ de origem.
     Clicar num `StatTile` filtra a tabela.
   - **"Por grupo"** — Nível 1: cards por grupo (contagem já respeitando o
     filtro Aberto/Fechado/Todos ativo). Nível 2 (ao clicar num card): matriz
@@ -202,8 +213,9 @@ indicadores):
       grupo", reaproveitando exatamente a UX que já existe em
       `ConfiguracaoEquipamentos.jsx` (input + `adicionarGrupo()`) — só que
       aqui grava em `pcm_grupos` em vez de num array dentro de um blob.
-      Assim que criado, o grupo já aparece no seletor de qualquer pessoa
-      (e, depois, no dropdown de grupo da tabela "Atribuições").
+      Assim que criado, o grupo já aparece no seletor de qualquer pessoa —
+      e, a partir daí, qualquer chamado dessa pessoa passa a mostrar esse
+      grupo (somente leitura) na aba "Atribuições".
 - `frontend/src/api.js` — funções novas seguindo o padrão existente
   (`fetchPcmAtribuicoes`, `salvarPcmAtribuicao`, `fetchPcmPessoasGrupo`,
   `salvarPcmPessoaGrupo`, `fetchPcmIndicadorGrupo`, `fetchPcmExportar`).
