@@ -52,8 +52,9 @@ Dashboard/Manutenção/Engenharia/Performance).
     `Modal`/`DrillDownContent` já existentes).
 - **Exportação Excel** faz parte do escopo (não é "fora de escopo"): botão
   disponível tanto na visão de um **grupo** quanto na de uma **pessoa**,
-  sempre com os dados completos — mesmo que isso demore mais (ver seção
-  "Exportação Excel" abaixo). Usuário confirmou que aceita a espera.
+  sempre com os dados completos, inclusive o texto de abertura do
+  solicitante (ver seção "Exportação Excel" abaixo — acabou sendo
+  instantâneo, sem custo extra de API).
 - **Filtro Aberto/Fechado/Todos**, compartilhado pela aba "Atribuições" e
   pela aba "Por grupo" (mesmo filtro, aplicado nas duas). Padrão: **Aberto**
   — o objetivo principal é ver a carga de trabalho atual, não acumular
@@ -87,8 +88,7 @@ create table pcm_grupos (
 insert into pcm_grupos (nome) values ('Manutenção'), ('Engenharia'), ('SESMT');
 
 create table pcm_pessoas_grupo (
-  chave_pessoa text primary key,  -- identificador estável vindo do Desk (não o nome puro — evita colisão de homônimos; nome exato do campo é descoberto na implementação, ver Pendências Técnicas)
-  nome text not null,             -- cache de exibição
+  chave_pessoa text primary key,  -- nome completo do operador (NomeOperador+SobrenomeOperador) — o Desk não expõe um ID numérico na lista, e o resto do projeto já trata "operador" só pelo nome
   grupo text not null references pcm_grupos (nome),
   atualizado_em timestamptz not null default now()
 );
@@ -114,15 +114,26 @@ grupo que não existe.
 Só existe uma linha em `pcm_atribuicoes_chamados` **quando o PCM edita algo**
 naquele chamado — chamados intocados não geram linha.
 
-> **Atenção pra quem for implementar:** a coluna "Distribuição" do Desk
-> Manager mostra a pessoa **e**, embaixo, um nome de fila/time que já existe
-> dentro do próprio Desk (ex: "MANUTENÇÃO - GERAL", "CORRETIVAS BA",
-> "REFRIGERAÇÃO MG" — categorias internas do Desk por tipo/região de
-> atividade, visíveis no menu lateral do sistema). **Isso não é o "grupo"**
-> que este projeto define (Manutenção/Engenharia/SESMT como times de
-> pessoas do PCM). `distribuicaoSistema` extrai só o **nome da pessoa** da
-> primeira linha — a fila do Desk é ignorada; o grupo usado em todo o
-> painel PCM vem exclusivamente de `pcm_pessoas_grupo`.
+> **Confirmado inspecionando a API real do Desk (2026-09-16):** a coluna
+> "Distribuição" do Desk não é um campo próprio — é a junção visual de dois
+> campos que **já existem** no payload de `/ChamadosSuporte/lista` e já são
+> usados em outras partes do projeto: `NomeOperador`+`SobrenomeOperador`
+> (mesmo helper `nomeOperador()` já usado em `indicadores.js`/
+> `indicadoresPorTaxonomia.js`) na primeira linha, e `NomeGrupo` (ex:
+> "MANUTENÇÃO - GERAL", "CORRETIVAS BA" — fila interna do Desk por tipo/
+> região) na segunda. **`NomeGrupo` não é o "grupo" que este projeto
+> define** (Manutenção/Engenharia/SESMT como times de pessoas do PCM) — é
+> ignorado. `distribuicaoSistema` é simplesmente `nomeOperador(chamado)`,
+> sem nenhuma extração nova.
+>
+> Isso também resolve a identidade de "pessoa": o endpoint de lista não traz
+> nenhum identificador numérico do operador (só nome+sobrenome). Seguindo a
+> mesma convenção já usada em todo o projeto pra "operador" (agrupado só
+> pelo nome, sem chave numérica), `chave_pessoa` em `pcm_pessoas_grupo` é o
+> **nome completo do operador** (string), não um ID do Desk — não existe ID
+> disponível na lista, e inventar uma busca por ID no endpoint de detalhe só
+> pra isso seria complexidade sem ganho real (o resto do app já aceita o
+> mesmo risco de homônimo pra "operador").
 
 **Regra de exibição/agregação** (usada tanto na tabela principal quanto nos
 indicadores):
@@ -204,25 +215,28 @@ de SLA por nível) — o frontend só chama `exportarLinhas(linhas, colunas,
 nomeArquivo)` com o que o backend devolver, sem lógica de xlsx nova no
 cliente.
 
-O texto de abertura do solicitante **não vem na listagem em lote do Desk**
-— só existe no endpoint de detalhe por chamado (o mesmo que já alimenta o
-modal de detalhe hoje, `fetchDetalheChamado`). Por isso a exportação
-completa precisa que o **backend** busque o detalhe de cada chamado
-individualmente:
+**Correção importante em relação à primeira versão desta spec:** o texto
+de abertura do solicitante **já vem no próprio endpoint de lista**
+(`/ChamadosSuporte/lista` devolve `Descricao` — confirmado inspecionando a
+API real em 2026-09-16), com o mesmo conteúdo do endpoint de detalhe
+(só que já sem entidades HTML: a lista devolve `"...corredor de
+funcionários..."`, o detalhe devolve `"...funcion&aacute;rios..."`). Ou
+seja, **não há custo extra nenhum** — é só mais um campo no mesmo dataset
+que `carregarChamadosEnriquecidos()` já carrega e cacheia (5 min) pra tudo
+o resto do sistema. Não existe modo "rápido" vs "completo": é sempre
+instantâneo, sem chamada adicional à API do Desk por chamado.
 
+- `enriquecimento.js` passa a anexar `descricaoAbertura: chamado.Descricao`
+  junto dos outros campos já anexados (`cliente`, `uf`, etc.) — nenhuma
+  chamada de rede nova.
 - `GET /api/pcm/exportar?grupo=X` (grupo inteiro) ou
-  `GET /api/pcm/exportar?grupo=X&pessoa=Y` (uma pessoa).
-- Backend resolve a lista de `codChamado` no escopo pedido, depois busca o
-  detalhe de cada um via `fetchDetalheChamado` **em lotes com concorrência
-  limitada** (ex: 5 por vez) — evita disparar centenas de chamadas
-  simultâneas pra API do Desk e ficar sujeito a rate limit/erro.
-- Usuário já confirmou que aceita a espera extra (pode levar alguns
-  segundos a mais em grupos grandes) em troca de sempre ter o dado
-  completo — não há modo "rápido/parcial".
-- Colunas do Excel: Código · Assunto · Descrição de abertura (texto
-  completo) · Solicitante · Loja/Cliente · UF · Data de criação · Status
-  do chamado · Distribuição (origem + nome) · Grupo · Urgência ·
-  Observação do PCM · Data prevista de solução · Status de prazo.
+  `GET /api/pcm/exportar?grupo=X&pessoa=Y` (uma pessoa) — resolve a lista
+  de chamados no escopo pedido a partir do dataset já em memória e devolve
+  as linhas prontas pro Excel.
+- Colunas do Excel: Código · Assunto · Descrição de abertura · Solicitante
+  · Loja/Cliente · UF · Data de criação · Status do chamado · Distribuição
+  (origem + nome) · Grupo · Urgência · Observação do PCM · Data prevista de
+  solução · Status de prazo.
 
 ## Testes
 
@@ -248,24 +262,21 @@ no frontend, verificação manual no navegador):
 - Sem histórico de mudanças de atribuição — só o estado atual (se o PCM
   reatribuir, o valor anterior não fica registrado em lugar nenhum).
 - Sem atribuição em lote (uma linha por vez, edição inline).
-- Sem exportação "rápida/parcial" sem o texto de abertura — sempre completa.
 
-## Pendências técnicas para a implementação
+## Pendências técnicas — resolvidas
 
-Estas duas coisas não são decisões de produto — são descobertas que só dá
-pra confirmar inspecionando a resposta real da API do Desk Manager (mesmo
-processo já documentado no projeto pra outros campos, ex: `_8575`/`_9637`):
+As duas pendências da primeira versão desta spec (nome exato do campo
+"Distribuição" e onde vive o texto de abertura) já foram resolvidas
+inspecionando a API real do Desk Manager (`/ChamadosSuporte/lista`) em
+2026-09-16 — ver os destaques nas seções "Modelo de dados" e "Exportação
+Excel" acima. Resumo:
 
-1. **Nome exato do campo "Distribuição"** no payload de
-   `/ChamadosSuporte/lista` (provavelmente algo como `NomeDistribuicao` ou
-   um par de campos pessoa+grupo/fila) e se ele já traz um identificador
-   estável da pessoa (não só o nome) — necessário pra popular
-   `chave_pessoa` em `pcm_pessoas_grupo` sem colidir homônimos.
-2. **Onde vive o texto de abertura do solicitante**: se é
-   `TChamado.Descricao` (retornado por `POST /ChamadosSuporte`, chamado
-   único) ou a primeira interação (`Descricao` da interação mais antiga,
-   vinda de `dados_da_interacao_do_chamados`, o mesmo endpoint que
-   `chamadoDetalhe.js` já usa pra buscar interações).
+- "Distribuição" = `NomeOperador`+`SobrenomeOperador` (pessoa) + `NomeGrupo`
+  (fila do Desk, não usada). Nenhum campo novo, nenhuma extração nova.
+- Texto de abertura = `Descricao`, já presente no próprio endpoint de
+  lista (mesmo dataset cacheado que todo o resto do sistema usa).
+- Identidade de pessoa (`chave_pessoa`) = nome completo do operador
+  (string), pela mesma razão que o resto do projeto já usa nome em vez de
+  ID pra "operador": o endpoint de lista não expõe nenhum ID numérico.
 
-A primeira task do plano de implementação deve resolver essas duas
-perguntas antes de qualquer código de schema/enriquecimento ser escrito.
+Não há mais nenhuma descoberta pendente para o plano de implementação.
