@@ -4,10 +4,12 @@ import cors from "cors";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { indicadoresRouter } from "./routes/indicadores.js";
+import { pcmRouter } from "./routes/pcm.js";
 import { basicAuth } from "./middleware/basicAuth.js";
 import { inicializar as inicializarPrioridades } from "./services/prioridades.js";
 import { inicializar as inicializarConfiguracaoEquipamentos } from "./services/configuracaoEquipamentos.js";
 import { inicializar as inicializarConfiguracaoIndicadores } from "./services/configuracaoIndicadores.js";
+import { inicializar as inicializarPcmPessoas } from "./services/pcmPessoas.js";
 
 const app = express();
 
@@ -21,6 +23,7 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use(basicAuth);
 
 app.use("/api", indicadoresRouter);
+app.use("/api", pcmRouter);
 
 // Serve o build do frontend (frontend/dist) a partir do mesmo processo Express — um único
 // serviço no Render cobre API e estáticos. Se frontend/dist ainda não existir (build não
@@ -41,7 +44,12 @@ const port = process.env.PORT || 3001;
 // aceitar requisições — se o Supabase estiver fora do ar aqui, é melhor o processo falhar
 // alto e visível do que subir servindo config quebrada/vazia por engano.
 try {
-  await Promise.all([inicializarPrioridades(), inicializarConfiguracaoEquipamentos(), inicializarConfiguracaoIndicadores()]);
+  await Promise.all([
+    inicializarPrioridades(),
+    inicializarConfiguracaoEquipamentos(),
+    inicializarConfiguracaoIndicadores(),
+    inicializarPcmPessoas(),
+  ]);
 } catch (error) {
   console.error("Falha ao inicializar configurações a partir do Supabase:", error);
   process.exit(1);

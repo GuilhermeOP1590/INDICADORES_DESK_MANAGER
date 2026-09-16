@@ -155,3 +155,29 @@ export function fetchTendenciaMensalManutencao(opts) {
 export function fetchTendenciaMensalCausa(opts) {
   return getJson("/api/orcamento/tendencia-mensal-causa", opts);
 }
+
+export function fetchPcmPessoas(opts) {
+  return getJson("/api/pcm/pessoas", opts ?? {});
+}
+
+export async function criarPcmGrupo(nome) {
+  const response = await fetch("/api/pcm/grupos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nome }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao criar grupo");
+  return data;
+}
+
+export async function salvarPcmPessoaGrupo(pessoa, grupo) {
+  const response = await fetch(`/api/pcm/pessoas/${encodeURIComponent(pessoa)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ grupo }),
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao salvar grupo da pessoa");
+  return data;
+}

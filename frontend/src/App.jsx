@@ -5,6 +5,7 @@ import EquipamentosPorIc from "./pages/EquipamentosPorIc.jsx";
 import Engenharia from "./pages/Engenharia.jsx";
 import Orcamento from "./pages/Orcamento.jsx";
 import Performance from "./pages/Performance.jsx";
+import Pcm from "./pages/Pcm.jsx";
 import ChamadosPrioritarios from "./pages/ChamadosPrioritarios.jsx";
 import ChamadosCondenados from "./pages/ChamadosCondenados.jsx";
 import ChamadosAguardandoPeca from "./pages/ChamadosAguardandoPeca.jsx";
@@ -38,6 +39,9 @@ export default function App() {
           <NavLink to="/performance" className={({ isActive }) => (isActive ? "active" : "")}>
             Performance
           </NavLink>
+          <NavLink to="/pcm" className={({ isActive }) => (isActive ? "active" : "")}>
+            PCM
+          </NavLink>
           <NavLink to="/prioritarios" className={({ isActive }) => (isActive ? "active" : "")}>
             Prioritários
           </NavLink>
@@ -60,6 +64,7 @@ export default function App() {
         <Route path="/engenharia" element={<Engenharia />} />
         <Route path="/orcamento" element={<Orcamento />} />
         <Route path="/performance" element={<Performance />} />
+        <Route path="/pcm" element={<Pcm />} />
         <Route path="/prioritarios" element={<ChamadosPrioritarios />} />
         <Route path="/condenados" element={<ChamadosCondenados />} />
         <Route path="/aguardando-peca" element={<ChamadosAguardandoPeca />} />
