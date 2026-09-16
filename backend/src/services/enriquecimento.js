@@ -19,6 +19,15 @@ export function anexarUf(chamados, contexto) {
   return chamados.map((chamado) => ({ ...chamado, uf: ufDoChamado(chamado, contexto) }));
 }
 
+// "Distribuição" no Desk Manager não é um campo próprio — é a junção visual de
+// NomeOperador+SobrenomeOperador (quem está com o chamado) com NomeGrupo (fila interna do
+// Desk, ex: "MANUTENÇÃO - GERAL", que NÃO é o "grupo" deste projeto e é ignorada aqui).
+// Confirmado inspecionando a API real do Desk em 2026-09-16.
+export function distribuicaoSistemaDoChamado(chamado) {
+  const nome = [chamado.NomeOperador, chamado.SobrenomeOperador].filter(Boolean).join(" ");
+  return nome || null;
+}
+
 // Reaproveita a mesma classificação de taxonomia usada em Manutenção/Engenharia, mas sem
 // descartar quem fica de fora do escopo (Sesmt, Transporte...) — essas viram "Outras áreas"
 // em vez de sumir, já que aqui (Dashboard) o objetivo é enxergar TODOS os departamentos.
@@ -48,6 +57,8 @@ export function enriquecerChamados(chamados, { subCategoriaIndex, clientePorUsua
       cliente,
       solicitante: nomePorUsuario?.get(chamado.ChaveUsuario) ?? null,
       uf: ufDoChamado(chamado, { codigoClientePorUsuario, ufPorCodigoCliente }),
+      distribuicaoSistema: distribuicaoSistemaDoChamado(chamado),
+      descricaoAbertura: chamado.Descricao ?? null,
     });
   }
 

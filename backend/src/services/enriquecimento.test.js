@@ -117,3 +117,70 @@ test("solicitante fica null quando nomePorUsuario não é fornecido", () => {
 
   assert.equal(enriquecido.solicitante, null);
 });
+
+test("anexa distribuicaoSistema a partir de NomeOperador+SobrenomeOperador", () => {
+  const chamados = [
+    {
+      Chave: 1,
+      SequenciaSubCategoria: "005705",
+      ChaveUsuario: 586,
+      NomeOperador: "Nadson",
+      SobrenomeOperador: "da Conceição",
+    },
+  ];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(enriquecido.distribuicaoSistema, "Nadson da Conceição");
+});
+
+test("distribuicaoSistema fica null quando não há operador", () => {
+  const chamados = [{ Chave: 2, SequenciaSubCategoria: "005705", ChaveUsuario: 586 }];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(enriquecido.distribuicaoSistema, null);
+});
+
+test("anexa descricaoAbertura a partir de Descricao", () => {
+  const chamados = [
+    {
+      Chave: 3,
+      SequenciaSubCategoria: "005705",
+      ChaveUsuario: 586,
+      Descricao: "É necessário fazer uma desobstrução na caixa de gordura.",
+    },
+  ];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(enriquecido.descricaoAbertura, "É necessário fazer uma desobstrução na caixa de gordura.");
+});
+
+test("descricaoAbertura fica null quando Descricao não vem no chamado", () => {
+  const chamados = [{ Chave: 4, SequenciaSubCategoria: "005705", ChaveUsuario: 586 }];
+
+  const [enriquecido] = enriquecerChamados(chamados, {
+    subCategoriaIndex: SUBCATEGORIA_INDEX,
+    clientePorUsuario: CLIENTE_POR_USUARIO,
+    codigoClientePorUsuario: CODIGO_CLIENTE_POR_USUARIO,
+    ufPorCodigoCliente: UF_POR_CODIGO_CLIENTE,
+  });
+
+  assert.equal(enriquecido.descricaoAbertura, null);
+});
