@@ -2,6 +2,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { fetchPcmAtribuicoes, salvarPcmAtribuicao } from "../api.js";
 import { StatTile } from "./StatTile.jsx";
+import { Modal } from "./Modal.jsx";
+import { DrillDownContent } from "./DrillDownContent.jsx";
+import { useDrillDown } from "../lib/useDrillDown.js";
 
 const URGENCIAS = ["Crítica", "Alta", "Média", "Baixa"];
 
@@ -18,9 +21,34 @@ const CLASSE_PRAZO = {
   "no-prazo": "status-good",
 };
 
+// Campo de observação isolado: mantém o texto digitado num estado local e só chama
+// onSalvar no blur (não a cada tecla) — evita disparar uma request por caractere e evita
+// que uma resposta atrasada do servidor sobrescreva o que o usuário ainda está digitando.
+function ObservacaoCell({ chamado, onSalvar }) {
+  const [valor, setValor] = useState(chamado.observacao ?? "");
+
+  useEffect(() => {
+    setValor(chamado.observacao ?? "");
+  }, [chamado.codChamado, chamado.observacao]);
+
+  return (
+    <input
+      type="text"
+      className="search-input"
+      value={valor}
+      onChange={(e) => setValor(e.target.value)}
+      onBlur={() => {
+        if (valor !== (chamado.observacao ?? "")) onSalvar(valor);
+      }}
+    />
+  );
+}
+
 export function PcmAtribuicoesTab({ situacao }) {
   const [state, setState] = useState({ status: "loading", chamados: [], error: null });
   const [filtroPrazo, setFiltroPrazo] = useState("");
+  const [busca, setBusca] = useState("");
+  const drill = useDrillDown();
 
   async function carregar() {
     setState((s) => ({ ...s, status: "loading" }));
@@ -64,7 +92,13 @@ export function PcmAtribuicoesTab({ situacao }) {
     return contagem;
   }, [state.chamados]);
 
-  const chamadosFiltrados = filtroPrazo ? state.chamados.filter((c) => c.statusPrazo === filtroPrazo) : state.chamados;
+  const chamadosFiltrados = state.chamados
+    .filter((c) => !filtroPrazo || c.statusPrazo === filtroPrazo)
+    .filter((c) => {
+      const termo = busca.trim().toLowerCase();
+      if (!termo) return true;
+      return c.codChamado.toLowerCase().includes(termo) || c.assunto.toLowerCase().includes(termo);
+    });
 
   if (state.status === "loading") return <p className="subtitle">Carregando atribuições...</p>;
   if (state.status === "error") return <div className="state-banner error">Erro ao carregar atribuições: {state.error}</div>;
@@ -99,6 +133,25 @@ export function PcmAtribuicoesTab({ situacao }) {
 
       {state.error && <div className="state-banner error">{state.error}</div>}
 
+      {drill.pilha !== null && (
+        <Modal title={drill.topo?.titulo ?? ""} onClose={drill.fechar} onBack={drill.pilha.length > 1 ? drill.voltar : undefined}>
+          <DrillDownContent topo={drill.topo} onAbrirChamado={drill.abrirChamado} onAbrirLista={drill.abrirListaEmpilhada} />
+        </Modal>
+      )}
+
+      <div className="filter-bar">
+        <input
+          type="text"
+          className="search-input"
+          placeholder="Buscar por código ou assunto..."
+          value={busca}
+          onChange={(e) => setBusca(e.target.value)}
+        />
+        <span className="meta">
+          {chamadosFiltrados.length} de {state.chamados.length}
+        </span>
+      </div>
+
       <div className="panel full-width">
         <table>
           <thead>
@@ -116,9 +169,13 @@ export function PcmAtribuicoesTab({ situacao }) {
           <tbody>
             {chamadosFiltrados.map((c) => (
               <tr key={c.codChamado}>
-                <td>{c.codChamado}</td>
-                <td>{c.assunto}</td>
-                <td>
+                <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
+                  {c.codChamado}
+                </td>
+                <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
+                  {c.assunto}
+                </td>
+                <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
                   {c.origem === "pcm" ? "✋" : "🖥"} {c.pessoa ?? "—"}
                 </td>
                 <td>{c.grupo}</td>
@@ -133,12 +190,7 @@ export function PcmAtribuicoesTab({ situacao }) {
                   </select>
                 </td>
                 <td>
-                  <input
-                    type="text"
-                    className="search-input"
-                    value={c.observacao ?? ""}
-                    onChange={(e) => handleEditar(c.codChamado, "observacao", e.target.value)}
-                  />
+                  <ObservacaoCell chamado={c} onSalvar={(valor) => handleEditar(c.codChamado, "observacao", valor)} />
                 </td>
                 <td>
                   <input

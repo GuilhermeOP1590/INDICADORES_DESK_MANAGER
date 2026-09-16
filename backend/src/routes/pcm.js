@@ -1,7 +1,7 @@
 // backend/src/routes/pcm.js
 import { Router } from "express";
 import { carregarChamadosEnriquecidos } from "../services/enriquecimento.js";
-import { listarGrupos, listarPessoasGrupo, criarGrupo, definirGrupoDaPessoa } from "../services/pcmPessoas.js";
+import { listarGrupos, listarPessoasGrupo, criarGrupo, removerGrupo, definirGrupoDaPessoa } from "../services/pcmPessoas.js";
 import { excluirCancelados } from "../services/filtros.js";
 import { isFinalizado } from "../services/indicadores.js";
 import { atribuicaoDoChamado, resolverAtribuicaoEfetiva, salvarAtribuicao } from "../services/pcmAtribuicoes.js";
@@ -35,6 +35,8 @@ function linhaAtribuicao(chamado) {
     solicitante: chamado.solicitante,
     cliente: chamado.cliente,
     uf: chamado.uf,
+    especialidade: chamado.especialidade,
+    tipo: chamado.tipo,
     descricaoAbertura: chamado.descricaoAbertura,
     origem: efetiva.origem,
     pessoa: efetiva.pessoa,
@@ -77,6 +79,16 @@ pcmRouter.post("/pcm/grupos", async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ erro: error.message });
+  }
+});
+
+pcmRouter.delete("/pcm/grupos/:nome", async (req, res) => {
+  try {
+    const grupos = await removerGrupo(req.params.nome);
+    res.json({ grupos });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ erro: error.message });
   }
 });
 

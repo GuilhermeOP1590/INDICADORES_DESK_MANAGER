@@ -18,6 +18,13 @@ export function useDrillDown() {
     setPilha([{ tipo: "resumoCliente", filtros, titulo }]);
   }
 
+  // Lista somente-leitura de chamados do painel PCM (grupo/pessoa/urgência) — aberta ao
+  // clicar numa célula da matriz Pessoa × Urgência (PcmPorGrupoTab). Clicar num chamado dessa
+  // lista empilha "detalhe" por cima (via abrirChamado), então "← Voltar" retorna pra lista.
+  function abrirPcmLista(filtros, titulo) {
+    setPilha([{ tipo: "pcmLista", filtros, titulo }]);
+  }
+
   // Painel de detalhe (atividade + lojas) de um nível de SLA — aberto ao clicar num card do
   // SlaNiveisPanel; guarda o fetcher pra que DrillDownContent saiba qual endpoint chamar.
   function abrirNivelDetalhe(filtros, titulo, fetcher) {
@@ -81,6 +88,7 @@ export function useDrillDown() {
     abrir,
     abrirLista,
     abrirResumoCliente,
+    abrirPcmLista,
     abrirNivelDetalhe,
     abrirResumoBacklog,
     abrirListaEmpilhada,

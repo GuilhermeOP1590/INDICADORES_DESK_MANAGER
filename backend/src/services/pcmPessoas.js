@@ -51,6 +51,22 @@ export async function criarGrupo(nome) {
   return cacheGrupos;
 }
 
+export async function removerGrupo(nome) {
+  const supabase = getSupabaseClient();
+  const { error } = await supabase.from("pcm_grupos").delete().eq("nome", nome);
+  if (error) {
+    // 23503 = violação de chave estrangeira (Postgres) — ainda existe pessoa ou chamado
+    // referenciando esse grupo. Mensagem clara em vez de deixar o erro bruto do Postgres vazar.
+    if (error.code === "23503") {
+      throw new Error(`Não é possível remover "${nome}": ainda há pessoas ou chamados atribuídos a esse grupo`);
+    }
+    throw error;
+  }
+
+  cacheGrupos = listarGrupos().filter((g) => g !== nome);
+  return cacheGrupos;
+}
+
 export async function definirGrupoDaPessoa(pessoa, grupo) {
   const supabase = getSupabaseClient();
   const { error } = await supabase

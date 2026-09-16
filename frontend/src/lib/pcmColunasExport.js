@@ -9,6 +9,8 @@ export const COLUNAS_EXPORT_PCM = [
   { chave: "solicitante", titulo: "Solicitante" },
   { chave: "cliente", titulo: "Loja/Cliente" },
   { chave: "uf", titulo: "UF" },
+  { chave: "especialidade", titulo: "Especialidade" },
+  { chave: "tipo", titulo: "Tipo" },
   { chave: "dataCriacao", titulo: "Data de criação" },
   { chave: "status", titulo: "Status do chamado" },
   { chave: "origemLabel", titulo: "Origem da atribuição" },

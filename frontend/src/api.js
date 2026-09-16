@@ -171,6 +171,13 @@ export async function criarPcmGrupo(nome) {
   return data;
 }
 
+export async function removerPcmGrupo(nome) {
+  const response = await fetch(`/api/pcm/grupos/${encodeURIComponent(nome)}`, { method: "DELETE" });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.erro || "Falha ao remover grupo");
+  return data;
+}
+
 export async function salvarPcmPessoaGrupo(pessoa, grupo) {
   const response = await fetch(`/api/pcm/pessoas/${encodeURIComponent(pessoa)}`, {
     method: "PUT",

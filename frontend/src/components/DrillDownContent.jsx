@@ -5,6 +5,7 @@ import { BacklogResumoTable } from "./BacklogResumoTable.jsx";
 import { HorizontalBarChart } from "./HorizontalBarChart.jsx";
 import { NivelDetalhePanel } from "./NivelDetalhePanel.jsx";
 import { RankingTable } from "./RankingTable.jsx";
+import { PcmListaSimples } from "./PcmListaSimples.jsx";
 
 const formatBRL = (valor) => valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -109,6 +110,10 @@ export function DrillDownContent({ topo, onAbrirChamado, onAbrirLista, onAbrirRe
         onSelecionar={(label) => onAbrirLista({ ...topo.filtroBase, equipamento: label }, label)}
       />
     );
+  }
+
+  if (topo?.tipo === "pcmLista") {
+    return <PcmListaSimples filtros={topo.filtros} onAbrirChamado={onAbrirChamado} />;
   }
 
   if (topo?.tipo === "nivelDetalhe") {

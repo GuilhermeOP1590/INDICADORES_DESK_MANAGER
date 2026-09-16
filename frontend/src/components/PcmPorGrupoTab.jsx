@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { fetchPcmIndicadorGrupo, fetchPcmIndicadorPessoa, fetchPcmAtribuicoes } from "../api.js";
 import { StatTile } from "./StatTile.jsx";
 import { Modal } from "./Modal.jsx";
-import { PcmListaSimples } from "./PcmListaSimples.jsx";
+import { DrillDownContent } from "./DrillDownContent.jsx";
+import { useDrillDown } from "../lib/useDrillDown.js";
 import { exportarLinhas } from "../lib/exportExcel.js";
 import { COLUNAS_EXPORT_PCM, prepararLinhasExportPcm } from "../lib/pcmColunasExport.js";
 
@@ -13,7 +14,7 @@ export function PcmPorGrupoTab({ situacao }) {
   const [state, setState] = useState({ status: "loading", porGrupo: [], error: null });
   const [grupoAberto, setGrupoAberto] = useState(null);
   const [pessoas, setPessoas] = useState({ status: "idle", porPessoa: [], error: null });
-  const [lista, setLista] = useState(null);
+  const drill = useDrillDown();
 
   useEffect(() => {
     setState((s) => ({ ...s, status: "loading" }));
@@ -83,7 +84,7 @@ export function PcmPorGrupoTab({ situacao }) {
                     <td
                       className="clickable-row"
                       onClick={() =>
-                        setLista({ titulo: `${grupoAberto} — ${p.pessoa}`, filtros: { situacao, grupo: grupoAberto, pessoa: p.pessoa } })
+                        drill.abrirPcmLista({ situacao, grupo: grupoAberto, pessoa: p.pessoa }, `${grupoAberto} — ${p.pessoa}`)
                       }
                     >
                       {p.pessoa}
@@ -93,10 +94,10 @@ export function PcmPorGrupoTab({ situacao }) {
                         key={u}
                         className="num clickable-row"
                         onClick={() =>
-                          setLista({
-                            titulo: `${grupoAberto} — ${p.pessoa} — ${u}`,
-                            filtros: { situacao, grupo: grupoAberto, pessoa: p.pessoa, urgencia: u },
-                          })
+                          drill.abrirPcmLista(
+                            { situacao, grupo: grupoAberto, pessoa: p.pessoa, urgencia: u },
+                            `${grupoAberto} — ${p.pessoa} — ${u}`
+                          )
                         }
                       >
                         {p.porUrgencia[u]}
@@ -118,9 +119,9 @@ export function PcmPorGrupoTab({ situacao }) {
         </div>
       )}
 
-      {lista && (
-        <Modal title={lista.titulo} onClose={() => setLista(null)}>
-          <PcmListaSimples filtros={lista.filtros} />
+      {drill.pilha !== null && (
+        <Modal title={drill.topo?.titulo ?? ""} onClose={drill.fechar} onBack={drill.pilha.length > 1 ? drill.voltar : undefined}>
+          <DrillDownContent topo={drill.topo} onAbrirChamado={drill.abrirChamado} onAbrirLista={drill.abrirListaEmpilhada} />
         </Modal>
       )}
     </div>
