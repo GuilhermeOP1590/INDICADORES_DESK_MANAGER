@@ -5,6 +5,12 @@ import { StatTile } from "./StatTile.jsx";
 import { Modal } from "./Modal.jsx";
 import { DrillDownContent } from "./DrillDownContent.jsx";
 import { useDrillDown } from "../lib/useDrillDown.js";
+import { useSort } from "../lib/useSort.js";
+import { formatBR } from "../lib/datas.js";
+import { exportarLinhas } from "../lib/exportExcel.js";
+import { COLUNAS_EXPORT_PCM, prepararLinhasExportPcm } from "../lib/pcmColunasExport.js";
+import { aplicarFiltrosColuna, buscaNormalizada, filtroAtivo, opcoesDaColuna } from "../lib/filtrosColuna.js";
+import { ColumnFilterTh } from "./ColumnFilterTh.jsx";
 
 const URGENCIAS = ["Crítica", "Alta", "Média", "Baixa"];
 
@@ -14,6 +20,58 @@ const LABEL_PRAZO = {
   "no-prazo": "No prazo",
   "sem-data": "Sem data",
 };
+
+const ORDEM_PRAZO = ["Atrasado", "Vence esta semana", "No prazo", "Sem data"];
+const ORDEM_URGENCIA = [...URGENCIAS, "Sem urgência"];
+
+function porOrdemFixa(ordem) {
+  return (a, b) => ordem.indexOf(a) - ordem.indexOf(b);
+}
+
+// "dd/mm/aaaa" não ordena como texto — compara pela data ISO; "Sem data" vai pro fim.
+function porDataBR(a, b) {
+  const iso = (v) => (v === "Sem data" ? "9999" : v.split("/").reverse().join("-"));
+  return iso(a).localeCompare(iso(b));
+}
+
+const COLUNAS = [
+  { chave: "codChamado", titulo: "Código", tipo: "texto", valor: (c) => c.codChamado },
+  { chave: "assunto", titulo: "Assunto", tipo: "texto", valor: (c) => c.assunto ?? "" },
+  { chave: "cliente", titulo: "Loja", tipo: "lista", valor: (c) => c.cliente || "Sem loja" },
+  { chave: "pessoa", titulo: "Distribuição", tipo: "lista", valor: (c) => c.pessoa ?? "Sem pessoa" },
+  { chave: "grupo", titulo: "Grupo", tipo: "lista", valor: (c) => c.grupo },
+  {
+    chave: "urgencia",
+    titulo: "Urgência",
+    tipo: "lista",
+    valor: (c) => c.urgencia || "Sem urgência",
+    ordenarOpcoes: porOrdemFixa(ORDEM_URGENCIA),
+  },
+  { chave: "observacao", titulo: "Observação", tipo: "texto", valor: (c) => c.observacao ?? "" },
+  {
+    chave: "dataPrevistaSolucao",
+    titulo: "Data prevista",
+    tipo: "lista",
+    valor: (c) => (c.dataPrevistaSolucao ? formatBR(c.dataPrevistaSolucao) : "Sem data"),
+    ordenarOpcoes: porDataBR,
+  },
+  {
+    chave: "statusPrazo",
+    titulo: "Prazo",
+    tipo: "lista",
+    valor: (c) => LABEL_PRAZO[c.statusPrazo],
+    ordenarOpcoes: porOrdemFixa(ORDEM_PRAZO),
+  },
+];
+
+const COLUNA_PRAZO = COLUNAS.find((c) => c.chave === "statusPrazo");
+
+// Resumo curto do filtro pra mostrar no chip ("Loja: Loja 12, Loja 30 +2").
+function resumoFiltro(coluna, filtro) {
+  if (coluna.tipo === "texto") return `contém "${filtro.trim()}"`;
+  const valores = [...filtro];
+  return valores.length <= 2 ? valores.join(", ") : `${valores.slice(0, 2).join(", ")} +${valores.length - 2}`;
+}
 
 const CLASSE_PRAZO = {
   atrasado: "status-critical",
@@ -46,7 +104,7 @@ function ObservacaoCell({ chamado, onSalvar }) {
 
 export function PcmAtribuicoesTab({ situacao }) {
   const [state, setState] = useState({ status: "loading", chamados: [], error: null });
-  const [filtroPrazo, setFiltroPrazo] = useState("");
+  const [filtros, setFiltros] = useState({});
   const [busca, setBusca] = useState("");
   const drill = useDrillDown();
 
@@ -86,19 +144,66 @@ export function PcmAtribuicoesTab({ situacao }) {
     }
   }
 
+  const chamadosNaBusca = useMemo(() => {
+    const termo = buscaNormalizada(busca);
+    if (!termo) return state.chamados;
+    return state.chamados.filter((c) =>
+      [c.codChamado, c.assunto, c.cliente, c.pessoa].some((v) => buscaNormalizada(v).includes(termo))
+    );
+  }, [state.chamados, busca]);
+
+  const chamadosFiltrados = useMemo(
+    () => aplicarFiltrosColuna(chamadosNaBusca, COLUNAS, filtros),
+    [chamadosNaBusca, filtros]
+  );
+
+  // Opções de cada coluna = valores presentes nas linhas que passam em todos os OUTROS
+  // filtros — assim dá pra cruzar (ex.: escolher a loja e ver só os grupos/pessoas dela).
+  const opcoesPorColuna = useMemo(() => {
+    const opcoes = {};
+    for (const coluna of COLUNAS) {
+      if (coluna.tipo !== "lista") continue;
+      opcoes[coluna.chave] = opcoesDaColuna(aplicarFiltrosColuna(chamadosNaBusca, COLUNAS, filtros, coluna.chave), coluna);
+    }
+    return opcoes;
+  }, [chamadosNaBusca, filtros]);
+
+  // Os cards de prazo contam dentro dos demais filtros (loja, grupo...), mas ignoram o
+  // próprio filtro de prazo — senão clicar em "Atrasados" zeraria os outros cards.
   const contagemPrazo = useMemo(() => {
     const contagem = { atrasado: 0, "vence-semana": 0, "no-prazo": 0, "sem-data": 0 };
-    for (const c of state.chamados) contagem[c.statusPrazo] += 1;
+    for (const c of aplicarFiltrosColuna(chamadosNaBusca, COLUNAS, filtros, "statusPrazo")) contagem[c.statusPrazo] += 1;
     return contagem;
-  }, [state.chamados]);
+  }, [chamadosNaBusca, filtros]);
 
-  const chamadosFiltrados = state.chamados
-    .filter((c) => !filtroPrazo || c.statusPrazo === filtroPrazo)
-    .filter((c) => {
-      const termo = busca.trim().toLowerCase();
-      if (!termo) return true;
-      return c.codChamado.toLowerCase().includes(termo) || c.assunto.toLowerCase().includes(termo);
-    });
+  const { sorted: chamadosOrdenados, sortKey, sortDir, toggleSort } = useSort(chamadosFiltrados);
+
+  function definirFiltro(chave, valor) {
+    setFiltros((f) => ({ ...f, [chave]: valor }));
+  }
+
+  function alternarPrazo(statusPrazo) {
+    const label = LABEL_PRAZO[statusPrazo];
+    const atual = filtros.statusPrazo;
+    const soEsse = atual && atual.size === 1 && atual.has(label);
+    definirFiltro("statusPrazo", soEsse ? new Set() : new Set([label]));
+  }
+
+  function prazoSelecionado(statusPrazo) {
+    return filtroAtivo(COLUNA_PRAZO, filtros.statusPrazo) && filtros.statusPrazo.has(LABEL_PRAZO[statusPrazo]);
+  }
+
+  const filtrosAtivos = COLUNAS.filter((c) => filtroAtivo(c, filtros[c.chave]));
+  const temFiltro = filtrosAtivos.length > 0 || busca.trim() !== "";
+
+  function limparTudo() {
+    setFiltros({});
+    setBusca("");
+  }
+
+  function exportarFiltrados() {
+    exportarLinhas(prepararLinhasExportPcm(chamadosOrdenados), COLUNAS_EXPORT_PCM, "pcm-atribuicoes-filtradas");
+  }
 
   if (state.status === "loading") return <p className="subtitle">Carregando atribuições...</p>;
   if (state.status === "error") return <div className="state-banner error">Erro ao carregar atribuições: {state.error}</div>;
@@ -110,24 +215,28 @@ export function PcmAtribuicoesTab({ situacao }) {
           label="Atrasados"
           value={contagemPrazo.atrasado}
           statusClass="status-critical"
-          onClick={() => setFiltroPrazo((f) => (f === "atrasado" ? "" : "atrasado"))}
+          className={prazoSelecionado("atrasado") ? "selecionado" : ""}
+          onClick={() => alternarPrazo("atrasado")}
         />
         <StatTile
           label="Vence esta semana"
           value={contagemPrazo["vence-semana"]}
           statusClass="status-warning"
-          onClick={() => setFiltroPrazo((f) => (f === "vence-semana" ? "" : "vence-semana"))}
+          className={prazoSelecionado("vence-semana") ? "selecionado" : ""}
+          onClick={() => alternarPrazo("vence-semana")}
         />
         <StatTile
           label="No prazo"
           value={contagemPrazo["no-prazo"]}
           statusClass="status-good"
-          onClick={() => setFiltroPrazo((f) => (f === "no-prazo" ? "" : "no-prazo"))}
+          className={prazoSelecionado("no-prazo") ? "selecionado" : ""}
+          onClick={() => alternarPrazo("no-prazo")}
         />
         <StatTile
           label="Sem data prevista"
           value={contagemPrazo["sem-data"]}
-          onClick={() => setFiltroPrazo((f) => (f === "sem-data" ? "" : "sem-data"))}
+          className={prazoSelecionado("sem-data") ? "selecionado" : ""}
+          onClick={() => alternarPrazo("sem-data")}
         />
       </section>
 
@@ -143,31 +252,59 @@ export function PcmAtribuicoesTab({ situacao }) {
         <input
           type="text"
           className="search-input"
-          placeholder="Buscar por código ou assunto..."
+          placeholder="Buscar por código, assunto, loja ou pessoa..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
         <span className="meta">
           {chamadosFiltrados.length} de {state.chamados.length}
         </span>
+        <button className="refresh-btn" onClick={exportarFiltrados} disabled={chamadosFiltrados.length === 0}>
+          Exportar Excel
+        </button>
       </div>
+
+      {temFiltro && (
+        <div className="filtro-chips">
+          {filtrosAtivos.map((coluna) => (
+            <span key={coluna.chave} className="filtro-chip">
+              <strong>{coluna.titulo}:</strong> {resumoFiltro(coluna, filtros[coluna.chave])}
+              <button
+                type="button"
+                title={`Remover filtro de ${coluna.titulo}`}
+                onClick={() => definirFiltro(coluna.chave, coluna.tipo === "texto" ? "" : new Set())}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          <button type="button" className="filtro-limpar" onClick={limparTudo}>
+            Limpar todos os filtros
+          </button>
+        </div>
+      )}
 
       <div className="panel full-width">
         <table>
           <thead>
             <tr>
-              <th>Código</th>
-              <th>Assunto</th>
-              <th>Distribuição</th>
-              <th>Grupo</th>
-              <th>Urgência</th>
-              <th>Observação</th>
-              <th>Data prevista</th>
-              <th>Prazo</th>
+              {COLUNAS.map((coluna, i) => (
+                <ColumnFilterTh
+                  key={coluna.chave}
+                  coluna={coluna}
+                  filtro={filtros[coluna.chave]}
+                  opcoes={opcoesPorColuna[coluna.chave] ?? []}
+                  onChange={(valor) => definirFiltro(coluna.chave, valor)}
+                  sortKey={sortKey}
+                  sortDir={sortDir}
+                  onSort={toggleSort}
+                  alinharDireita={i >= COLUNAS.length - 3}
+                />
+              ))}
             </tr>
           </thead>
           <tbody>
-            {chamadosFiltrados.map((c) => (
+            {chamadosOrdenados.map((c) => (
               <tr key={c.codChamado}>
                 <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
                   {c.codChamado}
@@ -175,6 +312,7 @@ export function PcmAtribuicoesTab({ situacao }) {
                 <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
                   {c.assunto}
                 </td>
+                <td>{c.cliente || "—"}</td>
                 <td className="clickable-row" onClick={() => drill.abrirChamado({ chave: c.chave, codChamado: c.codChamado })}>
                   {c.origem === "pcm" ? "✋" : "🖥"} {c.pessoa ?? "—"}
                 </td>
@@ -206,7 +344,7 @@ export function PcmAtribuicoesTab({ situacao }) {
             ))}
             {chamadosFiltrados.length === 0 && (
               <tr>
-                <td colSpan={8} className="meta">
+                <td colSpan={COLUNAS.length} className="meta">
                   Nenhum chamado encontrado com esse filtro.
                 </td>
               </tr>
